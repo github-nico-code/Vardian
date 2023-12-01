@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+/Vardian/vcpkg_installed/x64-windows
+/Vardian/x64
+/.vs
+/x64

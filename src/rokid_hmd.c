@@ -389,11 +389,14 @@ rokid_hmd_usb_init(struct rokid_hmd *rokid, struct xrt_prober_device *prober_dev
 		return false;
 	}
 
-	res = libusb_set_auto_detach_kernel_driver(rokid->usb_dev, 1);
+// TODO: Give developer feedback that it does not run at Windows
+#ifndef XRT_OS_WINDOWS
+ 	res = libusb_set_auto_detach_kernel_driver(rokid->usb_dev, 1);
 	if (res < 0) {
 		ROKID_ERROR(rokid, "Failed to set autodetach on USB device");
 		return false;
 	}
+#endif
 
 	res = libusb_claim_interface(rokid->usb_dev, ROKID_USB_INTERFACE_NUM);
 	if (res < 0) {
@@ -571,15 +574,15 @@ rokid_hmd_create(struct xrt_prober_device *prober_device)
 		ROKID_ERROR(hmd, "Failed to get display mode");
 		goto cleanup;
 	}
-/*	if (display_mode != 1) {
+	if (display_mode != 0) {
 		ROKID_INFO(rokid, "Setting Rokid display to SBS mode");
-		if (!rokid_hmd_set_display_mode(rokid, 1)) {
+		if (!rokid_hmd_set_display_mode(rokid, 0)) {
 			ROKID_ERROR(hmd, "Failed to get display mode");
 			goto cleanup;
 		}
 		os_nanosleep((int64_t)3 * (int64_t)U_TIME_1S_IN_NS);
 	}
-	*/
+	
 	ROKID_INFO(rokid, "Started Rokid driver instance");
 
 	return &rokid->base;

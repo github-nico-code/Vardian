@@ -389,7 +389,7 @@ rokid_hmd_usb_init(struct rokid_hmd *rokid, struct xrt_prober_device *prober_dev
 		return false;
 	}
 
-//	res = libusb_set_auto_detach_kernel_driver(rokid->usb_dev, 1);
+	res = libusb_set_auto_detach_kernel_driver(rokid->usb_dev, 1);
 	if (res < 0) {
 		ROKID_ERROR(rokid, "Failed to set autodetach on USB device");
 		return false;
@@ -419,6 +419,14 @@ rokid_hmd_destroy(struct xrt_device *xdev)
 	struct rokid_hmd *rokid = rokid_hmd(xdev);
 	if (rokid->usb_thread.initialized) {
 		os_thread_helper_destroy(&rokid->usb_thread);
+	}
+
+	if (rokid->usb_dev != NULL) {
+		if (libusb_release_interface(rokid->usb_dev, ROKID_USB_INTERFACE_NUM) < 0) {
+			ROKID_ERROR(rokid, "Failed to release USB status interface");
+
+			libusb_close(rokid->usb_dev);
+		}
 	}
 
 	if (rokid->fusion.initialized) {

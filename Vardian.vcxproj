@@ -153,6 +153,7 @@
     <ClInclude Include="src\math\m_vec3.h" />
     <ClInclude Include="src\os\os_threading.h" />
     <ClInclude Include="src\os\os_time.h" />
+    <ClInclude Include="src\rokid_interface.h" />
     <ClInclude Include="src\util\u_debug.h" />
     <ClInclude Include="src\util\u_device.h" />
     <ClInclude Include="src\util\u_distortion.h" />
@@ -191,6 +192,7 @@
     <ClCompile Include="src\math\m_predict.c" />
     <ClCompile Include="src\math\m_quatexpmap.cpp" />
     <ClCompile Include="src\os\os_time.cpp" />
+    <ClCompile Include="src\rokid_hmd.c" />
     <ClCompile Include="src\util\u_debug.c" />
     <ClCompile Include="src\util\u_device.c" />
     <ClCompile Include="src\util\u_distortion.c" />

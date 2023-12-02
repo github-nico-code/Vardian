@@ -138,6 +138,9 @@
     <ClInclude Include="src\xrt\xrt_windows.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="src\rokid_interface.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Vardian.cpp">
@@ -198,6 +201,9 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="src\util\u_var.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rokid_hmd.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

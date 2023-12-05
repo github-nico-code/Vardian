@@ -327,7 +327,7 @@ rokid_hmd_get_display_mode(struct rokid_hmd *rokid)
 	                                  data, // data is mandatory for some reason,
 	                                  sizeof(data), ROKID_USB_TRANSFER_TIMEOUT_MS);
 	if (res < 0) {
-		ROKID_ERROR(rokid, "Failed to set glasses to SBS mode");
+		ROKID_ERROR(rokid, "Failed to get Rokid Max display mode: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
 		return -1;
 	}
 	return data[1];
@@ -345,7 +345,7 @@ rokid_hmd_set_display_mode(struct rokid_hmd *rokid, uint16_t mode)
 	                                  data, // data is mandatory for some reason,
 	                                  sizeof(data), ROKID_USB_TRANSFER_TIMEOUT_MS);
 	if (res < 0) {
-		ROKID_ERROR(rokid, "Failed to set glasses to SBS mode");
+		ROKID_ERROR(rokid, "Failed to set Rokid Max display mode: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
 		return false;
 	}
 	return true;
@@ -358,7 +358,7 @@ rokid_hmd_usb_init(struct rokid_hmd *rokid, struct xrt_prober_device *prober_dev
 
 	res = libusb_init(&rokid->usb_ctx);
 	if (res < 0) {
-		ROKID_ERROR(rokid, "Failed to init USB");
+		ROKID_ERROR(rokid, "Failed to init USB: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
 		return false;
 	}
 
@@ -369,23 +369,73 @@ rokid_hmd_usb_init(struct rokid_hmd *rokid, struct xrt_prober_device *prober_dev
 		return false;
 	}
 
+/*
+	libusb_device** list;
+	ssize_t cnt = libusb_get_device_list(rokid->usb_ctx, &list);
+	if (cnt < 0) {
+		ROKID_ERROR(rokid, "Failed to USB device list: \"%s\"=>\"%s\"", libusb_error_name(cnt), libusb_strerror(cnt));
+		return false;
+	}
+
+	bool found = false;
+	libusb_device* rokidDevice = NULL;
+
+	// search for Rokid Device
+	for (ssize_t i = 0; i < cnt; i++) {
+		libusb_device* device = list[i];
+
+		struct libusb_device_descriptor desc = { 0 };
+
+		res = libusb_get_device_descriptor(device, &desc);
+		if (res < 0) {
+			ROKID_ERROR(rokid, "Failed to call libusb_get_device_descriptor: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
+			return false;
+		}
+
+		if ((desc.idVendor == ROKID_VID ) && ( desc.idProduct == ROKID_PID )) {
+			found = true;
+			rokidDevice = device;
+			break;
+		}
+	}
+
+	if (found) {
+		res = libusb_open(rokidDevice, &rokid->usb_dev);
+		if (rokid->usb_dev == NULL) {
+			ROKID_ERROR(rokid, "Failed to open USB device: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
+
+			libusb_free_device_list(list, 1);
+
+			return false;
+		}
+	}
+	else {
+		ROKID_ERROR(rokid, "Rokid Max not found");
+		libusb_free_device_list(list, 1);
+
+		return false;
+	}
+
+	libusb_free_device_list(list, 1);
+	*/
+
 	struct libusb_device_descriptor usb_desc;
 	res = libusb_get_device_descriptor(libusb_get_device(rokid->usb_dev), &usb_desc);
 	if (res < 0) {
-		ROKID_ERROR(rokid, "Failed to get descriptor");
+		ROKID_ERROR(rokid, "Failed to get descriptor: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
 		return false;
 	}
 
 	res = libusb_get_string_descriptor_ascii(rokid->usb_dev, usb_desc.iProduct, (unsigned char *)rokid->base.str,
 	                                         XRT_DEVICE_NAME_LEN - 1);
 	if (res < 0) {
-		ROKID_ERROR(rokid, "Failed to get product name");
+		ROKID_ERROR(rokid, "Failed to get product name: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
 		return false;
 	}
 	res = libusb_get_string_descriptor_ascii(rokid->usb_dev, usb_desc.iSerialNumber,
 	                                         (unsigned char *)rokid->base.serial, XRT_DEVICE_NAME_LEN - 1);
 	if (res < 0) {
-		ROKID_ERROR(rokid, "Failed to get serial");
+		ROKID_ERROR(rokid, "Failed to get serial: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
 		return false;
 	}
 
@@ -400,7 +450,7 @@ rokid_hmd_usb_init(struct rokid_hmd *rokid, struct xrt_prober_device *prober_dev
 
 	res = libusb_claim_interface(rokid->usb_dev, ROKID_USB_INTERFACE_NUM);
 	if (res < 0) {
-		ROKID_ERROR(rokid, "Failed to claim USB status interface");
+		ROKID_ERROR(rokid, "Failed to claim USB status interface: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
 		return false;
 	}
 
@@ -568,20 +618,20 @@ rokid_hmd_create(struct xrt_prober_device *prober_device)
 		ROKID_ERROR(hmd, "Failed to start USB thread");
 		goto cleanup;
 	}
-
+	/*
 	int display_mode = rokid_hmd_get_display_mode(rokid);
 	if (display_mode < 0) {
 		ROKID_ERROR(hmd, "Failed to get display mode");
 		goto cleanup;
 	}
-	if (display_mode != 0) {
-		ROKID_INFO(rokid, "Setting Rokid display to SBS mode");
-		if (!rokid_hmd_set_display_mode(rokid, 0)) {
+	if (display_mode != 2) {
+		ROKID_INFO(rokid, "Setting Rokid display to 1920x1080");
+		if (!rokid_hmd_set_display_mode(rokid, 2)) {
 			ROKID_ERROR(hmd, "Failed to get display mode");
 			goto cleanup;
 		}
 		os_nanosleep((int64_t)3 * (int64_t)U_TIME_1S_IN_NS);
-	}
+	}*/
 	
 	ROKID_INFO(rokid, "Started Rokid driver instance");
 

@@ -27,6 +27,8 @@ POINT unscaledMousePosition;                     // unscaled mouse position from
 HDC hdcWindow = NULL;                           // DC to copy to
 HDC hdcScreen = NULL;                           // DC from the whole virtual screen
 HWND hWnd = NULL;                               // main window
+bool running = false;
+RECT sourceRect = { 500, 500, 2420, 1580 };
 
 // Vorwärtsdeklarationen der in diesem Codemodul enthaltenen Funktionen:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -60,7 +62,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_VARDIAN));
 
     // Find Rokid Max device and start screen copy functionality
+    OutputDebugString(L"Begin (2) InitializeRokidWindow\r\n");
     InitializeRokidWindow(hWnd);
+    OutputDebugString(L"End (2) InitializeRokidWindow\r\n");
 
     MSG msg;
 
@@ -210,19 +214,65 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
         }
         break;
     case WM_PAINT:
-        {
+        if (running) {
             PAINTSTRUCT ps;
+
             HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Zeichencode, der hdc verwendet, hier einfügen...
+
+            HRGN clientRgn = CreateRectRgnIndirect(&clientRect);
+            RECT movedScreenRect = virtualScreenRect;
+            OffsetRect(&movedScreenRect, -sourceRect.left, -sourceRect.top);
+            HRGN virtualScreenRgn = CreateRectRgnIndirect(&movedScreenRect);
+            HRGN destRgn = CreateRectRgn(0,0,1,1);
+
+            // we only have to fill a region if it is a COMPLEXREGION
+            int regionType = CombineRgn(destRgn, clientRgn, virtualScreenRgn, RGN_DIFF);
+            if ((regionType = SIMPLEREGION) || (regionType == COMPLEXREGION )) {
+                FillRgn(hdc,destRgn, (HBRUSH)GetStockObject(BLACK_BRUSH));
+            }
+
+            DeleteObject(clientRgn);
+            DeleteObject(virtualScreenRgn);
+            DeleteObject(destRgn);
+
+            // The source DC is the entire screen, and the destination DC is the current window (HWND).
+            if (!BitBlt(hdc /*hdcWindow*/,
+                clientRect.left, clientRect.top,
+                clientRect.right, clientRect.bottom,
+                hdcScreen,
+                sourceRect.left, sourceRect.top,
+                SRCCOPY))
+            {
+                std::wstring the_out = std::wstring(L"BitBlt failed: ") +
+                    L" sourceRect.left, top, width x heigt:  " + std::to_wstring(sourceRect.left) +
+                    L", " + std::to_wstring(sourceRect.top) +
+                    L", " + std::to_wstring(sourceRect.right - sourceRect.left) + L" x " + std::to_wstring(sourceRect.bottom - sourceRect.top) +
+                    L" clientRect.left, top, width x height  " + std::to_wstring(clientRect.left) +
+                    L", " + std::to_wstring(clientRect.top) +
+                    L", " + std::to_wstring(clientRect.right - clientRect.left) + L" x " + std::to_wstring(clientRect.bottom - clientRect.top) +
+                    L"\n";
+                OutputDebugString(the_out.c_str());
+            }
+
+            CURSORINFO cursor = { sizeof(cursor) };
+            GetCursorInfo(&cursor);
+            if (cursor.flags == CURSOR_SHOWING) {
+                ICONINFO info = { sizeof(info) };
+                GetIconInfo(cursor.hCursor, &info);
+                const int x = unscaledMousePosition.x - sourceRect.left -info.xHotspot;
+                const int y = unscaledMousePosition.y - sourceRect.top -info.yHotspot;
+                BITMAP bmpCursor = { 0 };
+                GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
+                DrawIconEx(hdc, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
+                    0, NULL, DI_NORMAL);
+            }
+
             EndPaint(hWnd, &ps);
         }
         break;
@@ -235,16 +285,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         
         // wait some time and initialize window
         os_nanosleep(2000000000);
+        OutputDebugString(L"Begin (1) InitializeRokidWindow\r\n");
         InitializeRokidWindow(hWnd);
+        OutputDebugString(L"End (1) InitializeRokidWindow\r\n");
         break;
     case WM_SIZE:
-        if (hWnd != NULL)
+        if (hWnd != NULL && running)
         {
             // read actual drawing area size
             GetClientRect(hWnd, &clientRect);
-            // Resize the control to fill the window.
-            SetWindowPos(hWnd, NULL,
-                clientRect.left, clientRect.top, clientRect.right, clientRect.bottom, 0);
         }
         break;
     default:
@@ -393,7 +442,6 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
 void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, DWORD /*dwTime*/)
 {
     // output dimensions at rokid max display
-    static RECT sourceRect = { 500, 500, 2420, 1580 };
     static uint64_t last_timestamp = os_monotonic_get_ns();
 
     std::wstring the_out;
@@ -437,13 +485,13 @@ void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, 
             collect_y_movement = 0;
 
             // Don't scroll outside whole virtual desktop area.
-            if (sourceRect.left < virtualScreenRect.left)
+            if (sourceRect.left < virtualScreenRect.left - x_size / 3)
             {
-                sourceRect.left = virtualScreenRect.left;
+                sourceRect.left = virtualScreenRect.left - x_size / 3;
             }
-            else if (sourceRect.left > virtualScreenRect.right)
+            else if (sourceRect.left > virtualScreenRect.right - x_size + x_size / 3)
             {
-                sourceRect.left = virtualScreenRect.right;
+                sourceRect.left = virtualScreenRect.right - x_size + x_size / 3;
             }
 
             sourceRect.right = sourceRect.left + x_size;
@@ -453,78 +501,28 @@ void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, 
             sourceRect.top -= collect_x_movement;
             collect_x_movement = 0;
 
-            if (sourceRect.top < virtualScreenRect.top)
+            if (sourceRect.top < virtualScreenRect.top - y_size / 3)
             {
-                sourceRect.top = virtualScreenRect.top;
+                sourceRect.top = virtualScreenRect.top - y_size / 3;
             }
-            else if (sourceRect.top > virtualScreenRect.bottom)
+            else if (sourceRect.top > virtualScreenRect.bottom - y_size + y_size / 3)
             {
-                sourceRect.top = virtualScreenRect.bottom;
+                sourceRect.top = virtualScreenRect.bottom - y_size + y_size / 3;
             }
             sourceRect.bottom = sourceRect.top + y_size;
         }
 
-        the_out = the_out + L"Source Rectangle: " +
-            L" sourceRect.left:  " + std::to_wstring(sourceRect.left) +
-            L" sourceRect.top:  " + std::to_wstring(sourceRect.top) +
-            L" sourceRect.right:  " + std::to_wstring(sourceRect.right) +
-            L" sourceRect.bottom:  " + std::to_wstring(sourceRect.bottom) +
-            L" out_relation.angular_velocity.x:  " + std::to_wstring(out_relation.angular_velocity.x) +
-            L" out_relation.angular_velocity.y:  " + std::to_wstring(out_relation.angular_velocity.y) +
-            L" out_relation.angular_velocity.x:  " + std::to_wstring(out_relation.angular_velocity.z) +
-            L"\n";
-        OutputDebugString(the_out.c_str());
-
-
-        // TODO: insert stretchBlt here
-        // TODO: insert Cursor copy here
-        // Set the source rectangle for the magnifier control.
-//        MagSetWindowSource(hwndMag, sourceRect);
-            // This is the best stretch mode.
-        SetStretchBltMode(hdcWindow, HALFTONE);
-
-        // The source DC is the entire screen, and the destination DC is the current window (HWND).
-        if (!StretchBlt(hdcWindow,
-            clientRect.left, clientRect.top,
-            clientRect.right, clientRect.bottom,
-            hdcScreen,
-            sourceRect.left, sourceRect.top,
-            sourceRect.right,
-            sourceRect.bottom,
-            SRCCOPY))
-        {
-            MessageBox(hWnd, L"StretchBlt has failed", L"Failed", MB_OK);
-        }
-
-
-        CURSORINFO cursor = { sizeof(cursor) };
-        GetCursorInfo(&cursor);
-        if (cursor.flags == CURSOR_SHOWING) {
-            ICONINFO info = { sizeof(info) };
-            GetIconInfo(cursor.hCursor, &info);
-            const int x = cursor.ptScreenPos.x - clientRect.left; // -info.xHotspot;
-            const int y = cursor.ptScreenPos.y - clientRect.top; // -info.yHotspot;
-            BITMAP bmpCursor = { 0 };
-            GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
-            DrawIconEx(hdcWindow, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
-                0, NULL, DI_NORMAL);
-        }
+        // Force redraw.
+        InvalidateRect(hWnd, NULL, FALSE);
 
         // Reclaim topmost status, to prevent unmagnified menus from remaining in view. 
         SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0,
             SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
-
-        // Force redraw.
-        // TODO: Do we need the following line
-//        InvalidateRect(hWnd, NULL, TRUE);
     }
 }
 
 
 bool InitializeRokidWindow(HWND hWnd) {
-    OutputDebugString(L"Begin InitializeRokidWindow");
-    static bool running = false;
-
     std::wstring the_out;
 
     if (running) {
@@ -565,7 +563,49 @@ bool InitializeRokidWindow(HWND hWnd) {
         return false;
     }
 
+    the_out = std::wstring(L"Rokid Max Monitor Rectangle: ") +
+        L" monitor_struct.DevMode: x, y, width x heigt: " + std::to_wstring(monitor_struct.DevMode.dmPosition.x) +
+        L", " + std::to_wstring(monitor_struct.DevMode.dmPosition.y) +
+        L", " + std::to_wstring(monitor_struct.DevMode.dmPelsWidth) +
+        L" x " + std::to_wstring(monitor_struct.DevMode.dmPelsHeight) +
+        L"\n";
+    OutputDebugString(the_out.c_str());
+
+    if ((monitor_struct.DevMode.dmPelsWidth != 3840) || (monitor_struct.DevMode.dmPelsHeight != 1080)) {
+        // wrong Rokid Max resolution
+        return false;
+    }
+
+    // call update window after creating window and maybe rokid handles
+    if (UpdateWindow(hWnd) == false) {
+        return false;
+    }
+
     ShowWindow(hWnd, SW_SHOWNORMAL);
+
+    // change source rect size, because show window could be changed
+    GetClientRect(hWnd, &clientRect);
+
+    // reset values for virtual screen
+    SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    unsigned int vScreenWidth = GetSystemMetricsForDpi(SM_CXVIRTUALSCREEN, 96 /* 100% scaling*/);
+    unsigned int vScreenHeight = GetSystemMetricsForDpi(SM_CYVIRTUALSCREEN, 96 /* 100% scaling*/);
+
+    virtualScreenRect.left = GetSystemMetricsForDpi(SM_XVIRTUALSCREEN, 96);
+    virtualScreenRect.top = GetSystemMetricsForDpi(SM_YVIRTUALSCREEN, 96);
+    virtualScreenRect.right = GetSystemMetrics(SM_XVIRTUALSCREEN) + vScreenWidth;
+    virtualScreenRect.bottom = GetSystemMetrics(SM_YVIRTUALSCREEN) + vScreenHeight;
+
+    the_out = std::wstring(L"Main Window Rectangle: ") +
+        L" virtualScreenRect left, top, width x heigth:  " + std::to_wstring(virtualScreenRect.left) +
+        L", " + std::to_wstring(virtualScreenRect.top) +
+        L", " + std::to_wstring(virtualScreenRect.right - virtualScreenRect.left) +
+        L" x " + std::to_wstring(virtualScreenRect.bottom - virtualScreenRect.top) +
+        L"\n";
+    OutputDebugString(the_out.c_str());
+
+    // prevent Window from being copied
+    SetWindowDisplayAffinity(hWnd, WDA_EXCLUDEFROMCAPTURE);
 
     if (SetWindowPos(hWnd, HWND_TOPMOST, monitor_struct.DevMode.dmPosition.x, monitor_struct.DevMode.dmPosition.y,
         monitor_struct.DevMode.dmPelsWidth / 2,
@@ -573,49 +613,6 @@ bool InitializeRokidWindow(HWND hWnd) {
         SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOACTIVATE) == 0) {
         return false;
     }
-
-    RECT mainWindowRect;
-    GetWindowRect(hWnd, &mainWindowRect);
-    the_out = std::wstring(L"Main Window Rectangle: ") +
-        L" mainWindowRect.left:  " + std::to_wstring(mainWindowRect.left) +
-        L" mainWindowRect.top:  " + std::to_wstring(mainWindowRect.top) +
-        L" mainWindowRect.right:  " + std::to_wstring(mainWindowRect.right) +
-        L" mainWindowRect.bottom:  " + std::to_wstring(mainWindowRect.bottom) +
-        L"\n";
-    OutputDebugString(the_out.c_str());
-
-    GetWindowRect(hWnd, &mainWindowRect);
-    the_out = std::wstring(L"Main Window Rectangle: ") +
-        L" monitor_struct.DevMode.dmPosition.x:  " + std::to_wstring(monitor_struct.DevMode.dmPosition.x) +
-        L" monitor_struct.DevMode.dmPosition.y:  " + std::to_wstring(monitor_struct.DevMode.dmPosition.y) +
-        L" monitor_struct.DevMode.dmPelsWidth:  " + std::to_wstring(monitor_struct.DevMode.dmPelsWidth) +
-        L" monitor_struct.DevMode.dmPelsHeight:  " + std::to_wstring(monitor_struct.DevMode.dmPelsHeight) +
-        L"\n";
-    OutputDebugString(the_out.c_str());
-
-    // call update window after creating window and maybe rokid handles
-    if (UpdateWindow(hWnd) == false) {
-        return false;
-    }
-
-    // change source rect size, because show window could be changed
-    GetClientRect(hWnd, &clientRect);
-
-    // reset values for virtual screen
-    LONG x_size = clientRect.right - clientRect.left;
-    LONG y_size = clientRect.bottom - clientRect.top;
-
-    SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-    unsigned int vScreenWidth = GetSystemMetricsForDpi(SM_CXVIRTUALSCREEN, 96 /* 100% scaling*/);
-    unsigned int vScreenHeight = GetSystemMetricsForDpi(SM_CYVIRTUALSCREEN, 96 /* 100% scaling*/);
-
-    virtualScreenRect.left = GetSystemMetricsForDpi(SM_XVIRTUALSCREEN, 96) - x_size / 3;
-    virtualScreenRect.top = GetSystemMetricsForDpi(SM_YVIRTUALSCREEN, 96) - y_size / 3;
-    virtualScreenRect.right = GetSystemMetrics(SM_XVIRTUALSCREEN) + vScreenWidth - x_size + x_size / 3;
-    virtualScreenRect.bottom = GetSystemMetrics(SM_YVIRTUALSCREEN) + vScreenHeight - y_size + y_size / 3;
-
-    // prevent Window from being copied
-    SetWindowDisplayAffinity(hWnd, WDA_EXCLUDEFROMCAPTURE);
 
     hdcWindow = GetDC(hWnd);
     hdcScreen = GetDC(NULL);

@@ -211,7 +211,10 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="small.ico" />
-    <Image Include="Vardian.ico" />
+    <Image Include="Vardian.ico">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <None Include="LICENSE" />

@@ -5,16 +5,22 @@ VisualStudioVersion = 17.8.34322.80
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vardian", "Vardian.vcxproj", "{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}"
 EndProject
-Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Vardian_Setup", "Vardian_Setup\Vardian_Setup.vdproj", "{6BC69EEF-86D8-4ADF-8DF7-C24A8A265AD1}"
+Project("{840C416C-B8F3-42BC-B0DD-F6BB14C9F8CB}") = "Vardian_Adv_Setup", "Vardian_Adv_Setup\Vardian_Adv_Setup.aiproj", "{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		All|x64 = All|x64
+		All|x86 = All|x86
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.All|x64.ActiveCfg = Release|x64
+		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.All|x64.Build.0 = Release|x64
+		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.All|x86.ActiveCfg = Release|Win32
+		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.All|x86.Build.0 = Release|Win32
 		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Debug|x64.ActiveCfg = Debug|x64
 		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Debug|x64.Build.0 = Debug|x64
 		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Debug|x86.ActiveCfg = Debug|Win32
@@ -23,11 +29,18 @@ Global
 		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Release|x64.Build.0 = Release|x64
 		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Release|x86.ActiveCfg = Release|Win32
 		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Release|x86.Build.0 = Release|Win32
-		{6BC69EEF-86D8-4ADF-8DF7-C24A8A265AD1}.Debug|x64.ActiveCfg = Debug
-		{6BC69EEF-86D8-4ADF-8DF7-C24A8A265AD1}.Debug|x86.ActiveCfg = Debug
-		{6BC69EEF-86D8-4ADF-8DF7-C24A8A265AD1}.Release|x64.ActiveCfg = Release
-		{6BC69EEF-86D8-4ADF-8DF7-C24A8A265AD1}.Release|x64.Build.0 = Release
-		{6BC69EEF-86D8-4ADF-8DF7-C24A8A265AD1}.Release|x86.ActiveCfg = Release
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.All|x64.ActiveCfg = DefaultBuild
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.All|x64.Build.0 = DefaultBuild
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.All|x86.ActiveCfg = DefaultBuild
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.All|x86.Build.0 = DefaultBuild
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.Debug|x64.ActiveCfg = DefaultBuild
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.Debug|x64.Build.0 = DefaultBuild
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.Debug|x86.ActiveCfg = DefaultBuild
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.Debug|x86.Build.0 = DefaultBuild
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.Release|x64.ActiveCfg = DefaultBuild
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.Release|x64.Build.0 = DefaultBuild
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.Release|x86.ActiveCfg = DefaultBuild
+		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.Release|x86.Build.0 = DefaultBuild
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

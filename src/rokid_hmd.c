@@ -35,7 +35,7 @@
 
 
 
-#include "libusb-1.0/libusb.h"
+//#include "libusb-1.0/libusb.h"
 
 
 /*
@@ -70,8 +70,7 @@ struct rokid_hmd
 
 	struct os_thread_helper usb_thread;
 
-	libusb_context *usb_ctx;
-	libusb_device_handle *usb_dev;
+	HANDLE usb_dev;
 
 	struct rokid_fusion fusion;
 };
@@ -278,24 +277,78 @@ rokid_usb_thread(void *ptr)
 	U_TRACE_SET_THREAD_NAME("Rokid USB thread");
 	struct rokid_hmd *rokid = ptr;
 
-#ifdef XRT_OS_LINUX
-	// Try to raise priority of this thread, so we don't miss packets under load
-	u_linux_try_to_set_realtime_priority_on_thread(U_LOGGING_INFO, "Rokid USB thread");
-#endif
-
-	int last_libusb_result = LIBUSB_SUCCESS;
+	bool ok = true;
 
 	os_thread_helper_lock(&rokid->usb_thread);
-	while (os_thread_helper_is_running_locked(&rokid->usb_thread) && last_libusb_result == LIBUSB_SUCCESS) {
+	while (os_thread_helper_is_running_locked(&rokid->usb_thread) && ok) {
+		int read_length = 0;
+		unsigned char usb_buffer[ROKID_USB_BUFFER_LEN] = { 0 };
+		HANDLE  completionEvent;
+		DWORD      bytesTransferred;
+
+		OVERLAPPED Overlap;
+		Overlap.Internal = 0;
+		Overlap.InternalHigh = 0;
+		Overlap.Offset = 0;
+		Overlap.OffsetHigh = 0;
+		Overlap.Pointer = NULL;
+
+		//
+		// Create the completion event to send to the the OverlappedRead routine
+		//
+
+		completionEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+		//
+		// If NULL returned, then we cannot proceed any farther so we just exit the 
+		//  the thread
+		//
+
+		if (NULL == completionEvent)
+		{
+			ok = false;
+		}
+		else {
+			Overlap.hEvent = completionEvent;
+		}
 		os_thread_helper_unlock(&rokid->usb_thread);
 
-		unsigned char usb_buffer[ROKID_USB_BUFFER_LEN] = {0};
-		int read_length = 0;
+		if (ok) {
+			BOOL readStatus = ReadFile(rokid->usb_dev, usb_buffer, ROKID_USB_BUFFER_LEN, &read_length, &Overlap);
 
-		int last_libusb_result =
-		    libusb_interrupt_transfer(rokid->usb_dev, ROKID_INTERRUPT_IN_ENDPOINT, usb_buffer,
-		                              sizeof(usb_buffer), &read_length, ROKID_USB_TRANSFER_TIMEOUT_MS);
-		if (last_libusb_result == LIBUSB_SUCCESS) {
+			if (!readStatus)
+			{
+				// wait until end of read 
+				if (ERROR_IO_PENDING == GetLastError()) {
+					int wait_counter = 10;
+					while (wait_counter > 0) {
+						//
+						// // Wait for the completion event to be signaled or a timeout
+						DWORD waitStatus = WaitForSingleObject(completionEvent, ROKID_USB_TRANSFER_TIMEOUT_MS);
+
+						//
+						// If completionEvent was signaled, then a read just completed
+						//   so let's get the status and leave this loop and process the data 
+						//
+
+						if (WAIT_OBJECT_0 == waitStatus)
+						{
+							BOOL readSatus = GetOverlappedResult(rokid->usb_dev, &Overlap, &bytesTransferred, TRUE);
+							break;
+						}
+						wait_counter--;
+					}
+
+					// operation did not end correctly
+					ok = false;
+				}
+				else {
+					ok = false;
+				}
+			}
+		}
+
+		if (ok = true) {
 			os_mutex_lock(&rokid->fusion.mutex);
 			rokid_fusion_parse_usb_packet(&rokid->fusion, usb_buffer);
 			os_mutex_unlock(&rokid->fusion.mutex);
@@ -304,10 +357,10 @@ rokid_usb_thread(void *ptr)
 		os_thread_helper_lock(&rokid->usb_thread);
 	}
 	os_thread_helper_unlock(&rokid->usb_thread);
-	if (last_libusb_result == LIBUSB_SUCCESS) {
+	if (ok) {
 		ROKID_INFO(rokid, "Usb thread exiting normally");
 	} else {
-		ROKID_ERROR(rokid, "Exiting on libusb error %s", libusb_strerror(last_libusb_result));
+		ROKID_ERROR(rokid, "Exiting on libusb error");
 	}
 
 	return NULL;
@@ -319,7 +372,8 @@ static int
 rokid_hmd_get_display_mode(struct rokid_hmd *rokid)
 {
 	uint8_t data[ROKID_USB_BUFFER_LEN] = {0};
-	int res = libusb_control_transfer(rokid->usb_dev,
+	// TODO: use HID
+/*	int res = libusb_control_transfer(rokid->usb_dev,
 	                                  LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE,
 	                                  0x81, // request type = get display mode,
 	                                  0,    // wValue
@@ -330,6 +384,7 @@ rokid_hmd_get_display_mode(struct rokid_hmd *rokid)
 		ROKID_ERROR(rokid, "Failed to get Rokid Max display mode: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
 		return -1;
 	}
+	*/
 	return data[1];
 }
 
@@ -337,6 +392,8 @@ static bool
 rokid_hmd_set_display_mode(struct rokid_hmd *rokid, uint16_t mode)
 {
 	uint8_t data[1] = {1};
+	// TODO: use HID
+	/*
 	int res = libusb_control_transfer(rokid->usb_dev,
 	                                  LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE,
 	                                  0x1,  // request type = set display mode,
@@ -348,78 +405,32 @@ rokid_hmd_set_display_mode(struct rokid_hmd *rokid, uint16_t mode)
 		ROKID_ERROR(rokid, "Failed to set Rokid Max display mode: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
 		return false;
 	}
+	*/
 	return true;
 }
 
 static bool
 rokid_hmd_usb_init(struct rokid_hmd *rokid, struct xrt_prober_device *prober_device)
 {
-	int res;
+	rokid->usb_dev = INVALID_HANDLE_VALUE;
 
-	res = libusb_init(&rokid->usb_ctx);
-	if (res < 0) {
-		ROKID_ERROR(rokid, "Failed to init USB: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
+	rokid->usb_dev = CreateFile(L"\\\\?\\hid#vid_04d2&pid_162f&mi_02#7&2df0f12a&5&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+		GENERIC_READ,
+		FILE_SHARE_READ | FILE_SHARE_WRITE,
+		NULL,        // no SECURITY_ATTRIBUTES structure
+		OPEN_EXISTING, // No special create flags
+		FILE_FLAG_OVERLAPPED, // We open the device as overlapped
+		NULL);       // No template file
+
+	if (INVALID_HANDLE_VALUE == rokid->usb_dev)
+	{
+		ROKID_ERROR(rokid, "Failed to init HID");
 		return false;
 	}
 
-	rokid->usb_dev =
-	    libusb_open_device_with_vid_pid(rokid->usb_ctx, prober_device->vendor_id, prober_device->product_id);
-	if (rokid->usb_dev == NULL) {
-		ROKID_ERROR(rokid, "Failed to open USB device");
-		return false;
-	}
 
-/*
-	libusb_device** list;
-	ssize_t cnt = libusb_get_device_list(rokid->usb_ctx, &list);
-	if (cnt < 0) {
-		ROKID_ERROR(rokid, "Failed to USB device list: \"%s\"=>\"%s\"", libusb_error_name(cnt), libusb_strerror(cnt));
-		return false;
-	}
-
-	bool found = false;
-	libusb_device* rokidDevice = NULL;
-
-	// search for Rokid Device
-	for (ssize_t i = 0; i < cnt; i++) {
-		libusb_device* device = list[i];
-
-		struct libusb_device_descriptor desc = { 0 };
-
-		res = libusb_get_device_descriptor(device, &desc);
-		if (res < 0) {
-			ROKID_ERROR(rokid, "Failed to call libusb_get_device_descriptor: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
-			return false;
-		}
-
-		if ((desc.idVendor == ROKID_VID ) && ( desc.idProduct == ROKID_PID )) {
-			found = true;
-			rokidDevice = device;
-			break;
-		}
-	}
-
-	if (found) {
-		res = libusb_open(rokidDevice, &rokid->usb_dev);
-		if (rokid->usb_dev == NULL) {
-			ROKID_ERROR(rokid, "Failed to open USB device: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
-
-			libusb_free_device_list(list, 1);
-
-			return false;
-		}
-	}
-	else {
-		ROKID_ERROR(rokid, "Rokid Max not found");
-		libusb_free_device_list(list, 1);
-
-		return false;
-	}
-
-	libusb_free_device_list(list, 1);
-	*/
-
-	struct libusb_device_descriptor usb_desc;
+	// TODO: Read out several values
+/*	struct libusb_device_descriptor usb_desc;
 	res = libusb_get_device_descriptor(libusb_get_device(rokid->usb_dev), &usb_desc);
 	if (res < 0) {
 		ROKID_ERROR(rokid, "Failed to get descriptor: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
@@ -437,22 +448,8 @@ rokid_hmd_usb_init(struct rokid_hmd *rokid, struct xrt_prober_device *prober_dev
 	if (res < 0) {
 		ROKID_ERROR(rokid, "Failed to get serial: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
 		return false;
-	}
+	} */
 
-// TODO: Give developer feedback that it does not run at Windows
-#ifndef XRT_OS_WINDOWS
- 	res = libusb_set_auto_detach_kernel_driver(rokid->usb_dev, 1);
-	if (res < 0) {
-		ROKID_ERROR(rokid, "Failed to set autodetach on USB device");
-		return false;
-	}
-#endif
-
-	res = libusb_claim_interface(rokid->usb_dev, ROKID_USB_INTERFACE_NUM);
-	if (res < 0) {
-		ROKID_ERROR(rokid, "Failed to claim USB status interface: \"%s\"=>\"%s\"", libusb_error_name(res), libusb_strerror(res));
-		return false;
-	}
 
 	return true;
 }
@@ -474,12 +471,9 @@ rokid_hmd_destroy(struct xrt_device *xdev)
 		os_thread_helper_destroy(&rokid->usb_thread);
 	}
 
-	if (rokid->usb_dev != NULL) {
-		if (libusb_release_interface(rokid->usb_dev, ROKID_USB_INTERFACE_NUM) < 0) {
-			ROKID_ERROR(rokid, "Failed to release USB status interface");
-
-			libusb_close(rokid->usb_dev);
-		}
+	if (rokid->usb_dev != INVALID_HANDLE_VALUE) {
+		CloseHandle(rokid->usb_dev);
+		rokid->usb_dev = INVALID_HANDLE_VALUE;
 	}
 
 	if (rokid->fusion.initialized) {

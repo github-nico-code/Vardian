@@ -223,5 +223,6 @@
   <ItemGroup>
     <None Include="LICENSE" />
     <None Include="README.md" />
+    <None Include="vcpkg.json" />
   </ItemGroup>
 </Project>

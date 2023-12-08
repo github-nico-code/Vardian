@@ -289,12 +289,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         InitializeRokidWindow(hWnd);
         OutputDebugString(L"End (1) InitializeRokidWindow\r\n");
         break;
+    case WM_WINDOWPOSCHANGED:
     case WM_SIZE:
-        if (hWnd != NULL && running)
-        {
-            // read actual drawing area size
-            GetClientRect(hWnd, &clientRect);
-        }
+        // read actual drawing area size
+        GetClientRect(hWnd, &clientRect);
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);

@@ -283,68 +283,20 @@ rokid_usb_thread(void *ptr)
 	while (os_thread_helper_is_running_locked(&rokid->usb_thread) && ok) {
 		DWORD read_length = 0;
 		unsigned char usb_buffer[ROKID_USB_BUFFER_LEN] = { 0 };
-		HANDLE  completionEvent;
-		DWORD      bytesTransferred;
-
-		OVERLAPPED Overlap;
-		Overlap.Internal = 0;
-		Overlap.InternalHigh = 0;
-		Overlap.Offset = 0;
-		Overlap.OffsetHigh = 0;
-		Overlap.Pointer = NULL;
-
-		//
-		// Create the completion event to send to the the OverlappedRead routine
-		//
-
-		completionEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 
 		//
 		// If NULL returned, then we cannot proceed any farther so we just exit the 
 		//  the thread
 		//
 
-		if (NULL == completionEvent)
-		{
-			ok = false;
-		}
-		else {
-			Overlap.hEvent = completionEvent;
-		}
 		os_thread_helper_unlock(&rokid->usb_thread);
 
 		if (ok) {
-			BOOL readStatus = ReadFile(rokid->usb_dev, usb_buffer, ROKID_USB_BUFFER_LEN, &read_length, &Overlap);
+			BOOL readStatus = ReadFile(rokid->usb_dev, usb_buffer, ROKID_USB_BUFFER_LEN, &read_length, NULL);
 
 			if (!readStatus)
 			{
-				// wait until end of read 
-				if (ERROR_IO_PENDING == GetLastError()) {
-					int wait_counter = 10;
-					while (wait_counter > 0) {
-						//
-						// // Wait for the completion event to be signaled or a timeout
-						DWORD waitStatus = WaitForSingleObject(completionEvent, ROKID_USB_TRANSFER_TIMEOUT_MS);
-
-						//
-						// If completionEvent was signaled, then a read just completed
-						//   so let's get the status and leave this loop and process the data 
-						//
-
-						if (WAIT_OBJECT_0 == waitStatus)
-						{
-							BOOL readSatus = GetOverlappedResult(rokid->usb_dev, &Overlap, &bytesTransferred, TRUE);
-							break;
-						}
-						wait_counter--;
-					}
-
-					// operation did not end correctly
-					ok = false;
-				}
-				else {
-					ok = false;
-				}
+				ok = false;
 			}
 		}
 
@@ -419,7 +371,7 @@ rokid_hmd_usb_init(struct rokid_hmd *rokid, struct xrt_prober_device *prober_dev
 		FILE_SHARE_READ | FILE_SHARE_WRITE,
 		NULL,        // no SECURITY_ATTRIBUTES structure
 		OPEN_EXISTING, // No special create flags
-		FILE_FLAG_OVERLAPPED, // We open the device as overlapped
+		0, //FILE_FLAG_OVERLAPPED, // We open the device as overlapped
 		NULL);       // No template file
 
 	if (INVALID_HANDLE_VALUE == rokid->usb_dev)

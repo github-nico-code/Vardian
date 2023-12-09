@@ -251,35 +251,41 @@ u_device_allocate(enum u_device_alloc_flags flags, size_t size, size_t input_cou
 
 	// Do the allocation
 	char *ptr = U_TYPED_ARRAY_CALLOC(char, total_size);
-	struct xrt_device *xdev = (struct xrt_device *)ptr;
 
-	if (input_count > 0) {
-		xdev->input_count = input_count;
-		xdev->inputs = (struct xrt_input *)(ptr + offset_inputs);
+	if (ptr != NULL) {
+		struct xrt_device* xdev = (struct xrt_device*)ptr;
 
-		// Set inputs to active initially, easier for drivers.
-		for (size_t i = 0; i < input_count; i++) {
-			xdev->inputs[i].active = true;
+		if (input_count > 0) {
+			xdev->input_count = input_count;
+			xdev->inputs = (struct xrt_input*)(ptr + offset_inputs);
+
+			// Set inputs to active initially, easier for drivers.
+			for (size_t i = 0; i < input_count; i++) {
+				xdev->inputs[i].active = true;
+			}
 		}
-	}
 
-	if (output_count > 0) {
-		xdev->output_count = output_count;
-		xdev->outputs = (struct xrt_output *)(ptr + offset_outputs);
-	}
+		if (output_count > 0) {
+			xdev->output_count = output_count;
+			xdev->outputs = (struct xrt_output*)(ptr + offset_outputs);
+		}
 
-	if (alloc_hmd) {
-		xdev->hmd = (struct xrt_hmd_parts *)(ptr + offset_hmd);
-	}
+		if (alloc_hmd) {
+			xdev->hmd = (struct xrt_hmd_parts*)(ptr + offset_hmd);
+		}
 
-	if (alloc_tracking) {
-		xdev->tracking_origin = (struct xrt_tracking_origin *)(ptr + offset_tracking);
-		xdev->tracking_origin->type = XRT_TRACKING_TYPE_NONE;
-		xdev->tracking_origin->offset.orientation.w = 1.0f;
-		snprintf(xdev->tracking_origin->name, XRT_TRACKING_NAME_LEN, "%s", "No tracking");
-	}
+		if (alloc_tracking) {
+			xdev->tracking_origin = (struct xrt_tracking_origin*)(ptr + offset_tracking);
+			xdev->tracking_origin->type = XRT_TRACKING_TYPE_NONE;
+			xdev->tracking_origin->offset.orientation.w = 1.0f;
+			snprintf(xdev->tracking_origin->name, XRT_TRACKING_NAME_LEN, "%s", "No tracking");
+		}
 
-	return xdev;
+		return xdev;
+	}
+	else {
+		return NULL;
+	}
 }
 
 void

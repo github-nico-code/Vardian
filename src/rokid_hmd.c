@@ -281,7 +281,7 @@ rokid_usb_thread(void *ptr)
 
 	os_thread_helper_lock(&rokid->usb_thread);
 	while (os_thread_helper_is_running_locked(&rokid->usb_thread) && ok) {
-		int read_length = 0;
+		DWORD read_length = 0;
 		unsigned char usb_buffer[ROKID_USB_BUFFER_LEN] = { 0 };
 		HANDLE  completionEvent;
 		DWORD      bytesTransferred;
@@ -348,7 +348,7 @@ rokid_usb_thread(void *ptr)
 			}
 		}
 
-		if (ok = true) {
+		if (ok == true) {
 			os_mutex_lock(&rokid->fusion.mutex);
 			rokid_fusion_parse_usb_packet(&rokid->fusion, usb_buffer);
 			os_mutex_unlock(&rokid->fusion.mutex);

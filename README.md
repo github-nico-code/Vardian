@@ -1,9 +1,6 @@
 This software is still in alpha status. Please take care. It is hosted at 
 https://github.com/github-nico-code/Vardian
 
-!!! To use Vardian you hat to replace the usbser driver to WinUSB driver for the Windows "Rokid Max (3)" 
-device with the help of Zadic software (https://zadig.akeo.ie). !!!
-
 Vardian is a program to use the Rokid Max device to look at the windows screens. It uses the 
 3DOF functionality to navigate the Rokid Max screen about the windows screen.
 
@@ -15,14 +12,18 @@ I have taken some files from monado for this project
 
 I have taken some files from microsoft samples. Thanks for that.
 
-Thanks for the libusb library too.
+What does this software do:
+1. Detect whether Rokid Max is connected.
+2. Move Rokid Max screen to the most right in Windows Virtual screen.
+3. Place a window at the Rokid Max screen.
+4. Copy screen regions to the Rokid Max screen.
+5. Move the copied screen region with the help of Rokid Max 3DOF functionality.
+
 
 This program has a lot of open TODOs. If you want to take over project or do some changes 
 then please write me: nico.kasprzyk@gmx.de
 
 Next steps from my side:
 * Get the movements more smoothly.
-* Maybe use "usbser" connection for reading 3DOF data from Rokid Max because this driver
-  is automatically installed from Windows for Rokid Max.
 * Implement a lot of comfort functionality.
 * Stability.

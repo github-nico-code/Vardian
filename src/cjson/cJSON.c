@@ -124,7 +124,7 @@ CJSON_PUBLIC(double) cJSON_GetNumberValue(const cJSON * const item)
 CJSON_PUBLIC(const char*) cJSON_Version(void)
 {
     static char version[15];
-    sprintf(version, "%i.%i.%i", CJSON_VERSION_MAJOR, CJSON_VERSION_MINOR, CJSON_VERSION_PATCH);
+    sprintf_s(version, 15, "%i.%i.%i", CJSON_VERSION_MAJOR, CJSON_VERSION_MINOR, CJSON_VERSION_PATCH);
 
     return version;
 }
@@ -201,7 +201,7 @@ static unsigned char* cJSON_strdup(const unsigned char* string, const internal_h
     {
         return NULL;
     }
-    memcpy(copy, string, length);
+    memcpy_s(copy, length, string, length);
 
     return copy;
 }
@@ -1438,6 +1438,10 @@ static cJSON_bool parse_array(cJSON * const item, parse_buffer * const input_buf
 {
     cJSON *head = NULL; /* head of the linked list */
     cJSON *current_item = NULL;
+
+    if (input_buffer == NULL) {
+        return false;
+    }
 
     if (input_buffer->depth >= CJSON_NESTING_LIMIT)
     {

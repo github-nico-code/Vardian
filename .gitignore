@@ -35,7 +35,6 @@
 /vcpkg_installed/x64-windows-static
 /vcpkg_installed/x64-windows
 /Vardian.aps
-/Vardian_Setup/Release
 /Release
 /vcpkg_installed
 *.bak

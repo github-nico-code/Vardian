@@ -27,7 +27,7 @@
       <Name>Vardian</Name>
       <Project>{7e2d91c7-ce65-474b-ba0c-d8fbb08e0932}</Project>
       <Private>True</Private>
-      <OutputsToImport>PrimaryOutput;DocumentationOutput;References;ContentOutput</OutputsToImport>
+      <OutputsToImport>PrimaryOutput</OutputsToImport>
     </ProjectReference>
   </ItemGroup>
   <Target Name="Build">

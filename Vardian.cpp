@@ -105,7 +105,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.cbWndExtra     = 0;
     wcex.hInstance      = hInstance;
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_VARDIAN));
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
+    wcex.hCursor        = LoadCursor(nullptr, IDC_NO);
     wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_VARDIAN);
     wcex.lpszClassName  = szWindowClass;
@@ -233,7 +233,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             // we only have to fill a region if it is a COMPLEXREGION
             int regionType = CombineRgn(destRgn, clientRgn, virtualScreenRgn, RGN_DIFF);
-            if ((regionType = SIMPLEREGION) || (regionType == COMPLEXREGION )) {
+            if ((regionType == SIMPLEREGION) || (regionType == COMPLEXREGION )) {
                 FillRgn(hdc,destRgn, (HBRUSH)GetStockObject(BLACK_BRUSH));
             }
 
@@ -328,8 +328,8 @@ struct monitor_struct_typ {
     LONG bottom = 0;
     bool found = 0;
     DISPLAY_DEVICE device = {};
-    std::wstring szDevice;
-    DEVMODE DevMode;
+    std::wstring szDevice = L"";
+    DEVMODE DevMode = {};
 };
 
 // detaching the monitor is not possible anymore!

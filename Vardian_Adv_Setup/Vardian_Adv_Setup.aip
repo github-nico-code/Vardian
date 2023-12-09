@@ -39,6 +39,7 @@
     <ROW Component="AI_INSTALLPERUSER" ComponentId="{39BE95D5-DF7B-441F-AF76-8358BF639EEE}" Directory_="APPDIR" Attributes="4" KeyPath="AI_INSTALLPERUSER" Options="1"/>
     <ROW Component="APPDIR" ComponentId="{71E8CAEC-229D-44DE-987F-13F9A26633CE}" Directory_="APPDIR" Attributes="0"/>
     <ROW Component="ProductInformation" ComponentId="{1BB279CF-0862-4E20-B15C-8EC8DBBD48DC}" Directory_="APPDIR" Attributes="4" KeyPath="Version"/>
+    <ROW Component="README.md" ComponentId="{0398DA99-5536-4248-9946-6CFD325403A5}" Directory_="Vardian_Dir" Attributes="0" KeyPath="README.md" Type="0"/>
     <ROW Component="SHORTCUTDIR" ComponentId="{4E561E2A-8096-4358-82C3-C2A311F1F95B}" Directory_="SHORTCUTDIR" Attributes="0"/>
     <ROW Component="Vardian_PrimaryOutput" ComponentId="{31565549-C6FD-4063-B5B9-8662FDF0141B}" Directory_="Vardian_Dir" Attributes="256" KeyPath="Vardian.exe"/>
   </COMPONENT>
@@ -48,6 +49,8 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiFilesComponent">
     <ROW File="Vardian.exe" Component_="Vardian_PrimaryOutput" FileName="[|AI_PROPPATH_FILENAME_PERBUILD_Vardian.exe]" Attributes="0" SourcePath="&lt;AI_APPPATH_PERBUILD_Vardian.exe&gt;" SelfReg="false" DigSign="true"/>
+    <ROW File="README.md" Component_="README.md" FileName="README.md" Attributes="0" SourcePath="..\README.md" SelfReg="false"/>
+    <ROW File="LICENSE.txt" Component_="README.md" FileName="LICENSE.txt" Attributes="0" SourcePath="..\LICENSE.txt" SelfReg="false"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.AiPersistentPropComponent">
     <ROW Property="AI_INSTALLPERUSER" Registry="AI_INSTALLPERUSER" HklmSearch="AI_INSTALLPERUSER" HkcuSearch="AI_INSTALLPERUSER_1"/>
@@ -143,6 +146,7 @@
     <ROW Feature_="MainFeature" Component_="Vardian_PrimaryOutput"/>
     <ROW Feature_="MainFeature" Component_="SHORTCUTDIR"/>
     <ROW Feature_="MainFeature" Component_="AI_INSTALLPERUSER"/>
+    <ROW Feature_="MainFeature" Component_="README.md"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiIconsComponent">
     <ROW Name="Vardian.exe" SourcePath="..\Vardian.ico" Index="0"/>

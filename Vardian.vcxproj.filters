@@ -221,8 +221,10 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <None Include="LICENSE" />
     <None Include="README.md" />
     <None Include="vcpkg.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="LICENSE.txt" />
   </ItemGroup>
 </Project>

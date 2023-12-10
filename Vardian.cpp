@@ -20,10 +20,8 @@ WCHAR szTitle[MAX_LOADSTRING];                  // Titelleistentext
 WCHAR szWindowClass[MAX_LOADSTRING];            // Der Klassenname des Hauptfensters.
 static struct xrt_device* rokid_device = NULL;  // Pointer to Rokid Max
 UINT_PTR timerId = NULL;                        // timer to copy part of screen to Rokid Max
-RECT clientRect;                                // position and size of drawing area in window
 const UINT timerInterval = 16;                  // close to the refresh rate @60hz
-RECT virtualScreenRect;                         // values of the virtual screen
-POINT unscaledMousePosition;                     // unscaled mouse position from a mouse hook
+RECT virtualScreenRectWithoutRokidMax;          // values of the virtual screen without the X axis from Rokid Max
 HDC hdcWindow = NULL;                           // DC to copy to
 HDC hdcScreen = NULL;                           // DC from the whole virtual screen
 HWND hWnd = NULL;                               // main window
@@ -114,17 +112,6 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
-//Callback to get the unscaled mouse position
-// TODO: exchange this function by another one - I did not find unother solution
-LRESULT CALLBACK mouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
-{
-    PMSLLHOOKSTRUCT p = (PMSLLHOOKSTRUCT)lParam;
-    unscaledMousePosition.x = p->pt.x;
-    unscaledMousePosition.y = p->pt.y;
-
-    return CallNextHookEx(NULL, nCode, wParam, lParam);
-}
-
 //
 //   FUNKTION: InitInstance(HINSTANCE, int)
 //
@@ -150,9 +137,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
        hostWindowRect.right - hostWindowRect.left,
        hostWindowRect.bottom - hostWindowRect.top,
        nullptr, nullptr, hInstance, nullptr);
-   // TODO: Das war der originale Aufruf - löschen?
-   // HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-   //   CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -161,8 +145,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    // Make the window opaque.
    SetLayeredWindowAttributes(hWnd, 0, 255, LWA_ALPHA);
-
-   HHOOK mouseHook = SetWindowsHookEx(WH_MOUSE_LL, mouseHookProc, hInstance, NULL);
 
    ShowWindow(hWnd, SW_SHOWMINIMIZED /*TODO Maybe later: , SW_HIDE*/);
    UpdateWindow(hWnd);
@@ -225,48 +207,70 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             HDC hdc = BeginPaint(hWnd, &ps);
 
-            HRGN clientRgn = CreateRectRgnIndirect(&clientRect);
-            RECT movedScreenRect = virtualScreenRect;
-            OffsetRect(&movedScreenRect, -sourceRect.left, -sourceRect.top);
-            HRGN virtualScreenRgn = CreateRectRgnIndirect(&movedScreenRect);
-            HRGN destRgn = CreateRectRgn(0,0,1,1);
+            RECT intersectSource;
 
-            // we only have to fill a region if it is a COMPLEXREGION
-            int regionType = CombineRgn(destRgn, clientRgn, virtualScreenRgn, RGN_DIFF);
-            if ((regionType == SIMPLEREGION) || (regionType == COMPLEXREGION )) {
-                FillRgn(hdc,destRgn, (HBRUSH)GetStockObject(BLACK_BRUSH));
-            }
+            IntersectRect(&intersectSource, &sourceRect, &virtualScreenRectWithoutRokidMax);
 
-            DeleteObject(clientRgn);
-            DeleteObject(virtualScreenRgn);
-            DeleteObject(destRgn);
+            SIZE intersectSize;
+            intersectSize.cx = intersectSource.right - intersectSource.left;
+            intersectSize.cy = intersectSource.bottom - intersectSource.top;
+
+            // client rect is always at 0,0. Thus, move the intersectSource to client area
+            RECT intersectClientRect = intersectSource;
+            OffsetRect(&intersectClientRect, -sourceRect.left, -sourceRect.top);
 
             // The source DC is the entire screen, and the destination DC is the current window (HWND).
             if (!BitBlt(hdc /*hdcWindow*/,
-                clientRect.left, clientRect.top,
-                clientRect.right, clientRect.bottom,
+                intersectClientRect.left, intersectClientRect.top,
+                intersectClientRect.right, intersectClientRect.bottom,
                 hdcScreen,
-                sourceRect.left, sourceRect.top,
+                intersectSource.left, intersectSource.top,
                 SRCCOPY))
             {
                 std::wstring the_out = std::wstring(L"BitBlt failed: ") +
-                    L" sourceRect.left, top, width x heigt:  " + std::to_wstring(sourceRect.left) +
-                    L", " + std::to_wstring(sourceRect.top) +
-                    L", " + std::to_wstring(sourceRect.right - sourceRect.left) + L" x " + std::to_wstring(sourceRect.bottom - sourceRect.top) +
-                    L" clientRect.left, top, width x height  " + std::to_wstring(clientRect.left) +
-                    L", " + std::to_wstring(clientRect.top) +
-                    L", " + std::to_wstring(clientRect.right - clientRect.left) + L" x " + std::to_wstring(clientRect.bottom - clientRect.top) +
+                    L" intersectSource.left, top, width x heigt:  " + std::to_wstring(intersectSource.left) +
+                    L", " + std::to_wstring(intersectSource.top) +
+                    L", " + std::to_wstring(intersectSource.right - intersectSource.left) + L" x " + std::to_wstring(intersectSource.bottom - intersectSource.top) +
+                    L" intersectClientRect.left, top, width x height  " + std::to_wstring(intersectClientRect.left) +
+                    L", " + std::to_wstring(intersectClientRect.top) +
+                    L", " + std::to_wstring(intersectSize.cx) + L" x " + std::to_wstring(intersectSize.cy) +
+                    L" ps.rcPaint.left, top, width x height  " + std::to_wstring(ps.rcPaint.left) +
+                    L", " + std::to_wstring(ps.rcPaint.top) +
+                    L", " + std::to_wstring(ps.rcPaint.right - ps.rcPaint.left) + L" x " + std::to_wstring(ps.rcPaint.bottom - ps.rcPaint.top) +
                     L"\n";
                 OutputDebugString(the_out.c_str());
             }
 
+            HRGN clientRgn = CreateRectRgnIndirect(&intersectClientRect);
+            HRGN targetWindowRgn = CreateRectRgnIndirect(&ps.rcPaint);
+            HRGN destRgn = CreateRectRgn(0, 0, 1, 1);
+
+            // we only have to fill a region if it is a COMPLEXREGION or a simple rect
+            int regionType = CombineRgn(destRgn, targetWindowRgn, clientRgn, RGN_XOR);
+
+            if ((regionType == SIMPLEREGION) || (regionType == COMPLEXREGION)) {
+                FillRgn(hdc, destRgn, (HBRUSH)GetStockObject(BLACK_BRUSH));
+            }
+
+            DeleteObject(clientRgn);
+            DeleteObject(targetWindowRgn);
+            DeleteObject(destRgn);
+
+            // Draw frame around valid virtual screen
+            RECT frameRect = virtualScreenRectWithoutRokidMax;
+            OffsetRect(&frameRect, -sourceRect.left, -sourceRect.top);
+
+            FrameRect(hdc, &frameRect, (HBRUSH)GetStockObject(GRAY_BRUSH));
+
+            SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
             CURSORINFO cursor = { sizeof(cursor) };
             GetCursorInfo(&cursor);
+
             if (cursor.flags == CURSOR_SHOWING) {
                 ICONINFO info = { sizeof(info) };
                 GetIconInfo(cursor.hCursor, &info);
-                const int x = unscaledMousePosition.x - sourceRect.left -info.xHotspot;
-                const int y = unscaledMousePosition.y - sourceRect.top -info.yHotspot;
+                const int x = cursor.ptScreenPos.x - sourceRect.left - info.xHotspot;
+                const int y = cursor.ptScreenPos.y - sourceRect.top - info.yHotspot;
                 BITMAP bmpCursor = { 0 };
                 GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
                 DrawIconEx(hdc, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
@@ -291,8 +295,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_WINDOWPOSCHANGED:
     case WM_SIZE:
-        // read actual drawing area size
+        // change size of source rect
+        RECT clientRect;
         GetClientRect(hWnd, &clientRect);
+        sourceRect.right = sourceRect.left + clientRect.right - clientRect.left;
+        sourceRect.bottom = sourceRect.top + clientRect.bottom - clientRect.top;
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -474,8 +481,8 @@ void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, 
             collect_y_movement = 0;
         }
 
-        LONG x_size = clientRect.right - clientRect.left;
-        LONG y_size = clientRect.bottom - clientRect.top;
+        LONG x_size = sourceRect.right - sourceRect.left;
+        LONG y_size = sourceRect.bottom - sourceRect.top;
 
         // only move in 50 pixel steps
         if (abs(collect_y_movement) > y_threshold) {
@@ -483,13 +490,14 @@ void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, 
             collect_y_movement = 0;
 
             // Don't scroll outside whole virtual desktop area.
-            if (sourceRect.left < virtualScreenRect.left - x_size / 3)
+            if (sourceRect.left < virtualScreenRectWithoutRokidMax.left - x_size / 3)
             {
-                sourceRect.left = virtualScreenRect.left - x_size / 3;
+                sourceRect.left = virtualScreenRectWithoutRokidMax.left - x_size / 3;
             }
-            else if (sourceRect.left > virtualScreenRect.right - x_size + x_size / 3)
+            // do not move in Rokid Max Screen with copy area
+            else if (sourceRect.left > virtualScreenRectWithoutRokidMax.right - x_size + x_size / 3)
             {
-                sourceRect.left = virtualScreenRect.right - x_size + x_size / 3;
+                sourceRect.left = virtualScreenRectWithoutRokidMax.right - x_size + x_size / 3;
             }
 
             sourceRect.right = sourceRect.left + x_size;
@@ -499,13 +507,13 @@ void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, 
             sourceRect.top -= collect_x_movement;
             collect_x_movement = 0;
 
-            if (sourceRect.top < virtualScreenRect.top - y_size / 3)
+            if (sourceRect.top < virtualScreenRectWithoutRokidMax.top - y_size / 3)
             {
-                sourceRect.top = virtualScreenRect.top - y_size / 3;
+                sourceRect.top = virtualScreenRectWithoutRokidMax.top - y_size / 3;
             }
-            else if (sourceRect.top > virtualScreenRect.bottom - y_size + y_size / 3)
+            else if (sourceRect.top > virtualScreenRectWithoutRokidMax.bottom - y_size + y_size / 3)
             {
-                sourceRect.top = virtualScreenRect.bottom - y_size + y_size / 3;
+                sourceRect.top = virtualScreenRectWithoutRokidMax.bottom - y_size + y_size / 3;
             }
             sourceRect.bottom = sourceRect.top + y_size;
         }
@@ -582,23 +590,26 @@ bool InitializeRokidWindow(HWND hWnd) {
     ShowWindow(hWnd, SW_SHOWNORMAL);
 
     // change source rect size, because show window could be changed
+    RECT clientRect;
     GetClientRect(hWnd, &clientRect);
+    sourceRect.right = sourceRect.left + clientRect.right - clientRect.left;
+    sourceRect.bottom = sourceRect.top + clientRect.bottom - clientRect.top;
 
     // reset values for virtual screen
     SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     unsigned int vScreenWidth = GetSystemMetricsForDpi(SM_CXVIRTUALSCREEN, 96 /* 100% scaling*/);
     unsigned int vScreenHeight = GetSystemMetricsForDpi(SM_CYVIRTUALSCREEN, 96 /* 100% scaling*/);
 
-    virtualScreenRect.left = GetSystemMetricsForDpi(SM_XVIRTUALSCREEN, 96);
-    virtualScreenRect.top = GetSystemMetricsForDpi(SM_YVIRTUALSCREEN, 96);
-    virtualScreenRect.right = GetSystemMetrics(SM_XVIRTUALSCREEN) + vScreenWidth;
-    virtualScreenRect.bottom = GetSystemMetrics(SM_YVIRTUALSCREEN) + vScreenHeight;
+    virtualScreenRectWithoutRokidMax.left = GetSystemMetricsForDpi(SM_XVIRTUALSCREEN, 96);
+    virtualScreenRectWithoutRokidMax.top = GetSystemMetricsForDpi(SM_YVIRTUALSCREEN, 96);
+    virtualScreenRectWithoutRokidMax.right = GetSystemMetrics(SM_XVIRTUALSCREEN) + vScreenWidth - monitor_struct.DevMode.dmPelsWidth;
+    virtualScreenRectWithoutRokidMax.bottom = GetSystemMetrics(SM_YVIRTUALSCREEN) + vScreenHeight;
 
     the_out = std::wstring(L"Main Window Rectangle: ") +
-        L" virtualScreenRect left, top, width x heigth:  " + std::to_wstring(virtualScreenRect.left) +
-        L", " + std::to_wstring(virtualScreenRect.top) +
-        L", " + std::to_wstring(virtualScreenRect.right - virtualScreenRect.left) +
-        L" x " + std::to_wstring(virtualScreenRect.bottom - virtualScreenRect.top) +
+        L" virtualScreenRectWithoutRokidMax left, top, width x heigth:  " + std::to_wstring(virtualScreenRectWithoutRokidMax.left) +
+        L", " + std::to_wstring(virtualScreenRectWithoutRokidMax.top) +
+        L", " + std::to_wstring(virtualScreenRectWithoutRokidMax.right - virtualScreenRectWithoutRokidMax.left) +
+        L" x " + std::to_wstring(virtualScreenRectWithoutRokidMax.bottom - virtualScreenRectWithoutRokidMax.top) +
         L"\n";
     OutputDebugString(the_out.c_str());
 

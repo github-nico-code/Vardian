@@ -13,7 +13,7 @@
     <ROW Property="ARPCONTACT" Value="nico.kasprzyk@gmx.de"/>
     <ROW Property="ARPPRODUCTICON" Value="Vardian.exe" Type="8"/>
     <ROW Property="ARPURLINFOABOUT" Value="https://github.com/github-nico-code/Vardian"/>
-    <ROW Property="Manufacturer" Value="Varidian"/>
+    <ROW Property="Manufacturer" Value="Vardian"/>
     <ROW Property="ProductCode" Value="1033:{73F9D47B-B5B4-4BF7-A55F-C319CE1C10C5} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
     <ROW Property="ProductName" Value="Vardian"/>

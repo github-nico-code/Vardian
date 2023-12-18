@@ -577,11 +577,6 @@ bool InitializeRokidWindow(HWND hWnd) {
         L"\n";
     OutputDebugString(the_out.c_str());
 
-    if ((monitor_struct.DevMode.dmPelsWidth != 3840) || (monitor_struct.DevMode.dmPelsHeight != 1080)) {
-        // wrong Rokid Max resolution
-        return false;
-    }
-
     // call update window after creating window and maybe rokid handles
     if (UpdateWindow(hWnd) == false) {
         return false;
@@ -617,7 +612,8 @@ bool InitializeRokidWindow(HWND hWnd) {
     SetWindowDisplayAffinity(hWnd, WDA_EXCLUDEFROMCAPTURE);
 
     if (SetWindowPos(hWnd, HWND_TOPMOST, monitor_struct.DevMode.dmPosition.x, monitor_struct.DevMode.dmPosition.y,
-        monitor_struct.DevMode.dmPelsWidth / 2,
+        // I do not know why the size 3840 has to be halved
+        (monitor_struct.DevMode.dmPelsWidth==3840)?monitor_struct.DevMode.dmPelsWidth / 2: monitor_struct.DevMode.dmPelsWidth,
         monitor_struct.DevMode.dmPelsHeight,
         SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOACTIVATE) == 0) {
         return false;

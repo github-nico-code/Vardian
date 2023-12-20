@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vardian", "Vardian.vcxproj"
 EndProject
 Project("{840C416C-B8F3-42BC-B0DD-F6BB14C9F8CB}") = "Vardian_Adv_Setup", "Vardian_Adv_Setup\Vardian_Adv_Setup.aiproj", "{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Vardian_Setup", "Vardian_Setup\Vardian_Setup.vdproj", "{716B417E-0FBC-46A2-B018-C2F8B6B57DAE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		All|x64 = All|x64
@@ -41,6 +43,12 @@ Global
 		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.Release|x64.Build.0 = DefaultBuild
 		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.Release|x86.ActiveCfg = DefaultBuild
 		{FD430134-3F8C-4F98-AEAD-C7B2C326FE68}.Release|x86.Build.0 = DefaultBuild
+		{716B417E-0FBC-46A2-B018-C2F8B6B57DAE}.All|x64.ActiveCfg = Debug
+		{716B417E-0FBC-46A2-B018-C2F8B6B57DAE}.All|x86.ActiveCfg = Debug
+		{716B417E-0FBC-46A2-B018-C2F8B6B57DAE}.Debug|x64.ActiveCfg = Debug
+		{716B417E-0FBC-46A2-B018-C2F8B6B57DAE}.Debug|x86.ActiveCfg = Debug
+		{716B417E-0FBC-46A2-B018-C2F8B6B57DAE}.Release|x64.ActiveCfg = Release
+		{716B417E-0FBC-46A2-B018-C2F8B6B57DAE}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

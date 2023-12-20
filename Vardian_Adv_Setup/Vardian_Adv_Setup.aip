@@ -9,15 +9,15 @@
     <ROW Property="AI_PROPPATH_DIR_PERBUILD_Vardian.exe" Value="..\Release"/>
     <ROW Property="AI_PROPPATH_FILENAME_PERBUILD_Vardian.exe" Value="Vardian.exe"/>
     <ROW Property="ALLUSERS" Value="1" MultiBuildValue="DefaultBuild:"/>
-    <ROW Property="ARPCOMMENTS" Value="This installer database contains the logic and data required to install [|ProductName]." ValueLocId="*"/>
+    <ROW Property="ARPCOMMENTS" Value="This installer database contains the logic and data required to install Vardian." ValueLocId="*"/>
     <ROW Property="ARPCONTACT" Value="nico.kasprzyk@gmx.de"/>
     <ROW Property="ARPPRODUCTICON" Value="Vardian.exe" Type="8"/>
     <ROW Property="ARPURLINFOABOUT" Value="https://github.com/github-nico-code/Vardian"/>
     <ROW Property="Manufacturer" Value="Vardian"/>
-    <ROW Property="ProductCode" Value="1033:{C53A526A-3025-483E-A406-E2DB02AFBA3F} " Type="16"/>
+    <ROW Property="ProductCode" Value="1033:{836DD998-1C4F-4833-A467-879B7F7DC1BD} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
     <ROW Property="ProductName" Value="Vardian"/>
-    <ROW Property="ProductVersion" Value="0.2" Options="32"/>
+    <ROW Property="ProductVersion" Value="0.3" Options="32"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND"/>
     <ROW Property="UpgradeCode" Value="{961892DD-2129-4D32-8585-AA0196A83002}"/>
     <ROW Property="WindowsType9X" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>

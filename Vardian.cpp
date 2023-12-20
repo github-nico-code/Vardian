@@ -11,6 +11,10 @@
 #include <vector>
 #include <unordered_map>
 #include <os/os_time.h>
+#include <util/u_logging.h>
+#include <util/u_debug.h>
+#include <locale>
+#include <codecvt>
 
 #define MAX_LOADSTRING 100
 
@@ -44,7 +48,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
+    // set log option
+    _putenv("XRT_LOG=U_LOGGING_TRACE");
+    _putenv("ROKID_LOG=U_LOGGING_TRACE");
+
+    wchar_t my_filename[MAX_PATH]; 
+    GetModuleFileName(NULL, my_filename, MAX_PATH);
+
+    std::wstring my_filename_str(my_filename);
+    FILE* new_stdout;
+    FILE* new_stderr;
+    _wfreopen_s(&new_stdout, (my_filename_str + L".out.log" ).c_str(), L"w", stdout);
+    _wfreopen_s(&new_stderr, (my_filename_str + L".err.log").c_str(), L"w", stderr);
+
     // TODO: Hier Code einfügen.
+    U_LOG(U_LOGGING_TRACE, "Start Vardian");
 
     // Globale Zeichenfolgen initialisieren
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -60,10 +78,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_VARDIAN));
 
     // Find Rokid Max device and start screen copy functionality
-    OutputDebugString(L"Begin (2) InitializeRokidWindow\r\n");
     InitializeRokidWindow(hWnd);
-    OutputDebugString(L"End (2) InitializeRokidWindow\r\n");
-
+ 
     MSG msg;
 
     // Hauptnachrichtenschleife:
@@ -80,6 +96,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return FALSE;
     }
 
+    U_LOG(U_LOGGING_TRACE, "Finish Vardian");
+
+    fclose( new_stdout );
+    fclose( new_stderr );
 
     return (int) msg.wParam;
 }
@@ -140,7 +160,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    if (!hWnd)
    {
-      return FALSE;
+       U_LOG(U_LOGGING_ERROR, "Could not create main window.");
+       return FALSE;
    }
 
    // Make the window opaque.
@@ -227,18 +248,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 intersectSource.left, intersectSource.top,
                 SRCCOPY))
             {
-                std::wstring the_out = std::wstring(L"BitBlt failed: ") +
-                    L" intersectSource.left, top, width x heigt:  " + std::to_wstring(intersectSource.left) +
-                    L", " + std::to_wstring(intersectSource.top) +
-                    L", " + std::to_wstring(intersectSource.right - intersectSource.left) + L" x " + std::to_wstring(intersectSource.bottom - intersectSource.top) +
-                    L" intersectClientRect.left, top, width x height  " + std::to_wstring(intersectClientRect.left) +
-                    L", " + std::to_wstring(intersectClientRect.top) +
-                    L", " + std::to_wstring(intersectSize.cx) + L" x " + std::to_wstring(intersectSize.cy) +
-                    L" ps.rcPaint.left, top, width x height  " + std::to_wstring(ps.rcPaint.left) +
-                    L", " + std::to_wstring(ps.rcPaint.top) +
-                    L", " + std::to_wstring(ps.rcPaint.right - ps.rcPaint.left) + L" x " + std::to_wstring(ps.rcPaint.bottom - ps.rcPaint.top) +
-                    L"\n";
-                OutputDebugString(the_out.c_str());
+                std::string the_out = std::string("BitBlt failed: ") +
+                    " intersectSource.left, top, width x heigt:  " + std::to_string(intersectSource.left) +
+                    ", " + std::to_string(intersectSource.top) +
+                    ", " + std::to_string(intersectSource.right - intersectSource.left) + " x " + std::to_string(intersectSource.bottom - intersectSource.top) +
+                    " intersectClientRect.left, top, width x height  " + std::to_string(intersectClientRect.left) +
+                    ", " + std::to_string(intersectClientRect.top) +
+                    ", " + std::to_string(intersectSize.cx) + " x " + std::to_string(intersectSize.cy) +
+                    " ps.rcPaint.left, top, width x height  " + std::to_string(ps.rcPaint.left) +
+                    ", " + std::to_string(ps.rcPaint.top) +
+                    ", " + std::to_string(ps.rcPaint.right - ps.rcPaint.left) + " x " + std::to_string(ps.rcPaint.bottom - ps.rcPaint.top);
+                U_LOG(U_LOGGING_TRACE, the_out.c_str());
             }
 
             HRGN clientRgn = CreateRectRgnIndirect(&intersectClientRect);
@@ -289,9 +309,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         
         // wait some time and initialize window
         os_nanosleep(2000000000);
-        OutputDebugString(L"Begin (1) InitializeRokidWindow\r\n");
         InitializeRokidWindow(hWnd);
-        OutputDebugString(L"End (1) InitializeRokidWindow\r\n");
         break;
     case WM_WINDOWPOSCHANGED:
     case WM_SIZE:
@@ -339,6 +357,36 @@ struct monitor_struct_typ {
     DEVMODE DevMode = {};
 };
 
+
+std::string ws2s(const wchar_t* pcs)
+{
+    int res;
+    char buf[0x400];
+    char* pbuf = buf;
+    std::shared_ptr<char[]> shared_pbuf;
+
+    res = WideCharToMultiByte(CP_ACP, 0, pcs, -1, buf, sizeof(buf), NULL, NULL);
+
+    if (0 == res && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+    {
+        res = WideCharToMultiByte(CP_ACP, 0, pcs, -1, NULL, 0, NULL, NULL);
+
+        shared_pbuf = std::shared_ptr<char[]>(new char[res]);
+
+        pbuf = shared_pbuf.get();
+
+        res = WideCharToMultiByte(CP_ACP, 0, pcs, -1, pbuf, res, NULL, NULL);
+
+        return std::string(pbuf);
+    }
+    else if (0 == res)
+    {
+        return std::string("´ws2s_ERROR");
+    }
+    else {
+        return std::string(pbuf);
+    }
+}
 // detaching the monitor is not possible anymore!
 static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) {
     UINT pathCount;
@@ -382,10 +430,10 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
                 if (DisplayConfigGetDeviceInfo((DISPLAYCONFIG_DEVICE_INFO_HEADER*)&deviceName))
                     continue;
 
-                std::wstring the_out;
+                std::string the_out;
 
-                the_out += std::wstring(L"Monitor Friendly Name : '") + deviceName.monitorFriendlyDeviceName + L"'\n";
-                the_out += std::wstring(L"Monitor Device Path   : '") + deviceName.monitorDevicePath + L"'\n";
+                the_out += std::string("Monitor Friendly Name : '") + ws2s( deviceName.monitorFriendlyDeviceName ) + "'\n";
+                the_out += std::string("Monitor Device Path   : '") + ws2s( deviceName.monitorDevicePath ) + "'\n";
 
                 DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName = {};
                 sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
@@ -395,14 +443,14 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
                 if (DisplayConfigGetDeviceInfo((DISPLAYCONFIG_DEVICE_INFO_HEADER*)&sourceName))
                     continue;
 
-                the_out += std::wstring(L"GDI Device Name       : '") + sourceName.viewGdiDeviceName + L"'\n";
+                the_out += std::string("GDI Device Name       : '") + ws2s(sourceName.viewGdiDeviceName) + "'\n";
 
                 // find the monitor with this device name
                 auto element = monitors.find(sourceName.viewGdiDeviceName);
                 if (element != monitors.end()) {
-                    the_out += std::wstring(L"Monitor Handle        : '") + std::to_wstring((unsigned long long)element->second.rokid_handle) + L"'\n";
+                    the_out += std::string("Monitor Handle        : '") + std::to_string((unsigned long long)element->second.rokid_handle) + "'\n";
 
-                    OutputDebugString(the_out.c_str());
+                    U_LOG(U_LOGGING_TRACE, the_out.c_str());
 
 
                     if (std::wstring(deviceName.monitorFriendlyDeviceName) == std::wstring(L"Rokid Max")) {
@@ -529,7 +577,7 @@ void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, 
 
 
 bool InitializeRokidWindow(HWND hWnd) {
-    std::wstring the_out;
+    std::string the_out;
 
     if (running) {
         KillTimer(NULL, timerId);
@@ -556,8 +604,11 @@ bool InitializeRokidWindow(HWND hWnd) {
 
     if (rokid_found(NULL, &the_rokid_devlist, 1, 0, NULL, out_rokid_ptr.get()) == 1) {
         rokid_device = out_rokid_ptr.get()[0];
+        U_LOG(U_LOGGING_TRACE, "Rokid Max USB device found.");
+
     }
     else {
+        U_LOG(U_LOGGING_ERROR, "Did not find Rokid Max.");
         return false;
     }
 
@@ -566,21 +617,19 @@ bool InitializeRokidWindow(HWND hWnd) {
 
     // find Rokid Max and move Rokid Max monitor to most right
     if (get_rokid_monitor_handle(monitor_struct) == false) {
+        U_LOG(U_LOGGING_ERROR, "Could not find Rokid Max Monitor handle.");
         return false;
     }
 
-    the_out = std::wstring(L"Rokid Max Monitor Rectangle: ") +
-        L" monitor_struct.DevMode: x, y, width x heigt: " + std::to_wstring(monitor_struct.DevMode.dmPosition.x) +
-        L", " + std::to_wstring(monitor_struct.DevMode.dmPosition.y) +
-        L", " + std::to_wstring(monitor_struct.DevMode.dmPelsWidth) +
-        L" x " + std::to_wstring(monitor_struct.DevMode.dmPelsHeight) +
-        L"\n";
-    OutputDebugString(the_out.c_str());
+    U_LOG(U_LOGGING_TRACE, "Rokid Max Monitor handle found.");
 
     // call update window after creating window and maybe rokid handles
     if (UpdateWindow(hWnd) == false) {
+        U_LOG(U_LOGGING_ERROR, "'UpdateWindow' failed.");
         return false;
     }
+
+    U_LOG(U_LOGGING_TRACE, "'UpdateWindow' successful.");
 
     ShowWindow(hWnd, SW_SHOWNORMAL);
 
@@ -600,13 +649,12 @@ bool InitializeRokidWindow(HWND hWnd) {
     virtualScreenRectWithoutRokidMax.right = GetSystemMetrics(SM_XVIRTUALSCREEN) + vScreenWidth - monitor_struct.DevMode.dmPelsWidth;
     virtualScreenRectWithoutRokidMax.bottom = GetSystemMetrics(SM_YVIRTUALSCREEN) + vScreenHeight;
 
-    the_out = std::wstring(L"Main Window Rectangle: ") +
-        L" virtualScreenRectWithoutRokidMax left, top, width x heigth:  " + std::to_wstring(virtualScreenRectWithoutRokidMax.left) +
-        L", " + std::to_wstring(virtualScreenRectWithoutRokidMax.top) +
-        L", " + std::to_wstring(virtualScreenRectWithoutRokidMax.right - virtualScreenRectWithoutRokidMax.left) +
-        L" x " + std::to_wstring(virtualScreenRectWithoutRokidMax.bottom - virtualScreenRectWithoutRokidMax.top) +
-        L"\n";
-    OutputDebugString(the_out.c_str());
+    the_out = std::string("Main Window Rectangle: ") +
+        " virtualScreenRectWithoutRokidMax left, top, width x heigth:  " + std::to_string(virtualScreenRectWithoutRokidMax.left) +
+        ", " + std::to_string(virtualScreenRectWithoutRokidMax.top) +
+        ", " + std::to_string(virtualScreenRectWithoutRokidMax.right - virtualScreenRectWithoutRokidMax.left) +
+        " x " + std::to_string(virtualScreenRectWithoutRokidMax.bottom - virtualScreenRectWithoutRokidMax.top);
+    U_LOG(U_LOGGING_TRACE, the_out.c_str());
 
     // prevent Window from being copied
     SetWindowDisplayAffinity(hWnd, WDA_EXCLUDEFROMCAPTURE);
@@ -615,15 +663,25 @@ bool InitializeRokidWindow(HWND hWnd) {
         // I do not know why the size 3840 has to be halved
         (monitor_struct.DevMode.dmPelsWidth==3840)?monitor_struct.DevMode.dmPelsWidth / 2: monitor_struct.DevMode.dmPelsWidth,
         monitor_struct.DevMode.dmPelsHeight,
-        SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOACTIVATE) == 0) {
+        SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOACTIVATE) == 0)
+    {
+        U_LOG(U_LOGGING_ERROR, "Could not SetWindowPos to pos (%i,%i) with size (%i, %i).",
+            monitor_struct.DevMode.dmPosition.x, monitor_struct.DevMode.dmPosition.y,
+            monitor_struct.DevMode.dmPelsWidth, monitor_struct.DevMode.dmPelsHeight);
         return false;
     }
+
+    U_LOG(U_LOGGING_TRACE, "SetWindowPos to pos (%i,%i) with size (%i, %i).",
+        monitor_struct.DevMode.dmPosition.x, monitor_struct.DevMode.dmPosition.y,
+        monitor_struct.DevMode.dmPelsWidth, monitor_struct.DevMode.dmPelsHeight);
 
     hdcWindow = GetDC(hWnd);
     hdcScreen = GetDC(NULL);
 
     // Create a timer to update the control. But only if Rokid Max is connected
     timerId = SetTimer(hWnd, 0, timerInterval, UpdateRokidWindow);
+
+    U_LOG(U_LOGGING_TRACE, "Timer started.");
 
     running = true;
 

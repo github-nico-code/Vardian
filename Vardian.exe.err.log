@@ -1,0 +1,3 @@
+TRACE [wWinMain] Start Vardian
+ERROR [rokid_hmd_usb_init] Failed to init HID
+ERROR [InitializeRokidWindow] Did not find Rokid Max.

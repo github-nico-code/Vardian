@@ -49,8 +49,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(lpCmdLine);
 
     // set log option
-    _putenv("XRT_LOG=U_LOGGING_TRACE");
-    _putenv("ROKID_LOG=U_LOGGING_TRACE");
+    _putenv("XRT_LOG=trace");
+    _putenv("ROKID_LOG=trace");
 
     wchar_t my_filename[MAX_PATH]; 
     GetModuleFileName(NULL, my_filename, MAX_PATH);

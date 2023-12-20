@@ -14,10 +14,10 @@
     <ROW Property="ARPPRODUCTICON" Value="Vardian.exe" Type="8"/>
     <ROW Property="ARPURLINFOABOUT" Value="https://github.com/github-nico-code/Vardian"/>
     <ROW Property="Manufacturer" Value="Vardian"/>
-    <ROW Property="ProductCode" Value="1033:{836DD998-1C4F-4833-A467-879B7F7DC1BD} " Type="16"/>
+    <ROW Property="ProductCode" Value="1033:{8D100C5A-E879-4B6F-8C53-771439BFB9AC} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
     <ROW Property="ProductName" Value="Vardian"/>
-    <ROW Property="ProductVersion" Value="0.3" Options="32"/>
+    <ROW Property="ProductVersion" Value="0.4" Options="32"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND"/>
     <ROW Property="UpgradeCode" Value="{961892DD-2129-4D32-8585-AA0196A83002}"/>
     <ROW Property="WindowsType9X" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>

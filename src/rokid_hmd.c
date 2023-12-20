@@ -33,7 +33,8 @@
 #include "util/u_linux.h"
 #endif
 
-
+#include <hidsdi.h>
+#include <setupapi.h>
 
 //#include "libusb-1.0/libusb.h"
 
@@ -361,13 +362,162 @@ rokid_hmd_set_display_mode(struct rokid_hmd *rokid, uint16_t mode)
 	return true;
 }
 
+char* getErrorCodeDescription(long errorCode)
+{
+	static char MessageFromSystem[1024];
+	static char ReturnMessage[2000];
+	bool messageReceived = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM,
+		0,
+		errorCode,
+		1033,                          // US English
+		MessageFromSystem,
+		1024,
+		0);
+
+	if (!messageReceived)
+		sprintf_s(ReturnMessage, 2000, "Error code: %i", errorCode );
+	else
+		sprintf_s(ReturnMessage, 2000,  "Error code '%i' with message: '%s'", errorCode, MessageFromSystem );
+
+	return ReturnMessage;
+}
+
+char* ws2s(const wchar_t* pcs)
+{
+	int res;
+	static char buf[0x400];
+	char* pbuf = buf;
+
+	res = WideCharToMultiByte(CP_ACP, 0, pcs, -1, buf, sizeof(buf), NULL, NULL);
+
+	if (0 == res)
+	{
+		sprintf_s(pbuf, 0x400, "ws2s_ERROR: %i", GetLastError());
+	}
+
+	return pbuf;
+}
+
+
+
+WCHAR* getRokidDeviceString(struct rokid_hmd* rokid) {
+	WCHAR* device_string = NULL;
+
+	static WCHAR deviceBuffer[500];
+
+	HDEVINFO hDevInfoSet;
+	SP_DEVINFO_DATA devInfoData;
+	SP_DEVICE_INTERFACE_DATA devIfcData;
+	PSP_DEVICE_INTERFACE_DETAIL_DATA devIfcDetailData;
+
+	DWORD dwMemberIdx = 0, dwSize, dwType;
+	GUID hidGuid;
+	PBYTE byteArrayBuffer;
+
+	HidD_GetHidGuid(&hidGuid);
+
+	ROKID_TRACE(rokid, "HidGuid = {%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}\n",
+		hidGuid.Data1, hidGuid.Data2, hidGuid.Data3,
+		hidGuid.Data4[0], hidGuid.Data4[1], hidGuid.Data4[2], hidGuid.Data4[3],
+		hidGuid.Data4[4], hidGuid.Data4[5], hidGuid.Data4[6], hidGuid.Data4[7]);
+
+	// Retrieve a list of all present USB devices with a device interface.
+	hDevInfoSet = SetupDiGetClassDevs(&hidGuid, NULL, 0, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+
+	ROKID_TRACE(rokid, "hDevInfoSet Handle: %lp\n", hDevInfoSet);
+
+	if (hDevInfoSet != INVALID_HANDLE_VALUE) {
+
+		while (true) {
+
+			devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+
+			// Get SP_DEVINFO_DATA for this member.
+			if (!SetupDiEnumDeviceInfo(hDevInfoSet, dwMemberIdx, &devInfoData)) {
+				break;
+			}
+
+			// Get required size for device property
+			SetupDiGetDeviceRegistryProperty(hDevInfoSet, &devInfoData, SPDRP_HARDWAREID, &dwType, NULL, 0, &dwSize);
+
+			// Allocate required memory for byteArrayBuffer to hold device property.
+			byteArrayBuffer = (PBYTE)malloc(dwSize * sizeof(BYTE));
+
+			// Get SPDRP_HARDWAREID device property
+			if (SetupDiGetDeviceRegistryProperty(hDevInfoSet, &devInfoData, SPDRP_HARDWAREID, &dwType, byteArrayBuffer, dwSize, NULL)) {
+
+				// VID and PID from Rokid Max
+				// #define ROKID_VID 0x04d2
+				// #define ROKID_PID 0x162f
+				const wchar_t* vid= L"VID_04D2";
+				const wchar_t* pid = L"PID_162F";
+
+				const wchar_t* bufferAsChar = (wchar_t*)byteArrayBuffer;
+
+				ROKID_TRACE(rokid, "byteArrayBuffer (%i): %s\n", lstrlen(bufferAsChar), ws2s(bufferAsChar));
+
+				// Test for VID/PID
+				if (bufferAsChar != NULL && wcsstr(bufferAsChar, pid) && wcsstr(bufferAsChar, vid)) {
+					ROKID_TRACE(rokid, "Found at dwMemberIdx: %i\n", dwMemberIdx);
+
+					devIfcData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+					SetupDiEnumDeviceInterfaces(hDevInfoSet, NULL, &hidGuid, dwMemberIdx, &devIfcData);
+
+					// Get required size for devIfcDetailData.
+					SetupDiGetDeviceInterfaceDetail(hDevInfoSet, &devIfcData, NULL, 0, &dwSize, NULL);
+
+					// Allocate required memory for devIfcDetailData.
+					devIfcDetailData = (PSP_INTERFACE_DEVICE_DETAIL_DATA)malloc(dwSize);
+
+					if (devIfcDetailData != NULL) {
+						devIfcDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+
+						// Get devIfcDetailData
+						SetupDiGetDeviceInterfaceDetail(hDevInfoSet, &devIfcData, devIfcDetailData, dwSize, &dwSize, NULL);
+						ROKID_TRACE(rokid, "DevicePath: %s\n", ws2s(devIfcDetailData->DevicePath));
+						lstrcpy(deviceBuffer, devIfcDetailData->DevicePath);
+						device_string = deviceBuffer;
+
+						// Release devIfcDetailData memory
+						free(devIfcDetailData);
+
+						// we found it
+						break;
+					}
+				}
+			}
+
+			// Release byteArrayBuffer memory
+			free(byteArrayBuffer);
+
+			dwMemberIdx++;
+		}
+
+	}
+	else {
+		ROKID_ERROR(rokid, "devInfo == INVALID_HANDLE_VALUE\n");
+	}
+
+	SetupDiDestroyDeviceInfoList(hDevInfoSet);
+
+	return device_string;
+}
+
 static bool
 rokid_hmd_usb_init(struct rokid_hmd *rokid, struct xrt_prober_device *prober_device)
 {
 	rokid->usb_dev = INVALID_HANDLE_VALUE;
 
-	rokid->usb_dev = CreateFile(L"\\\\?\\hid#vid_04d2&pid_162f&mi_02#7&2df0f12a&5&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}",
-		GENERIC_READ,
+	WCHAR* deviceString = getRokidDeviceString(rokid);
+
+	if (deviceString == NULL) {
+		ROKID_ERROR(rokid, "Failed to find Rokid Max");
+		return false;
+	}
+
+//	rokid->usb_dev = CreateFile(L"\\\\?\\hid#vid_04d2&pid_162f&mi_02#7&2df0f12a&5&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+	rokid->usb_dev = CreateFile(deviceString,
+			GENERIC_READ,
 		FILE_SHARE_READ | FILE_SHARE_WRITE,
 		NULL,        // no SECURITY_ATTRIBUTES structure
 		OPEN_EXISTING, // No special create flags
@@ -376,7 +526,8 @@ rokid_hmd_usb_init(struct rokid_hmd *rokid, struct xrt_prober_device *prober_dev
 
 	if (INVALID_HANDLE_VALUE == rokid->usb_dev)
 	{
-		ROKID_ERROR(rokid, "Failed to init HID");
+		DWORD last_error = GetLastError();
+		ROKID_ERROR(rokid, "Failed to init HID: %s", getErrorCodeDescription(last_error));
 		return false;
 	}
 
@@ -575,7 +726,7 @@ rokid_hmd_create(struct xrt_prober_device *prober_device)
 		if (!rokid_hmd_set_display_mode(rokid, 2)) {
 			ROKID_ERROR(hmd, "Failed to get display mode");
 			goto cleanup;
-		}
+		üä´pßöol0i9rfed}
 		os_nanosleep((int64_t)3 * (int64_t)U_TIME_1S_IN_NS);
 	}*/
 	

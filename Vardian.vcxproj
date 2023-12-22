@@ -124,7 +124,7 @@
       </Command>
     </PostBuildEvent>
     <Xdcmake>
-      <AdditionalDocumentFile>README.md;%(AdditionalDocumentFile)</AdditionalDocumentFile>
+      <AdditionalDocumentFile>%(AdditionalDocumentFile)</AdditionalDocumentFile>
     </Xdcmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -150,7 +150,7 @@
       </Command>
     </PostBuildEvent>
     <Xdcmake>
-      <AdditionalDocumentFile>README.md;%(AdditionalDocumentFile)</AdditionalDocumentFile>
+      <AdditionalDocumentFile>%(AdditionalDocumentFile)</AdditionalDocumentFile>
     </Xdcmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -171,7 +171,7 @@
       </Command>
     </PostBuildEvent>
     <Xdcmake>
-      <AdditionalDocumentFile>README.md;%(AdditionalDocumentFile)</AdditionalDocumentFile>
+      <AdditionalDocumentFile>%(AdditionalDocumentFile)</AdditionalDocumentFile>
     </Xdcmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -196,7 +196,7 @@
       </Command>
     </PostBuildEvent>
     <Xdcmake>
-      <AdditionalDocumentFile>README.md;%(AdditionalDocumentFile)</AdditionalDocumentFile>
+      <AdditionalDocumentFile>%(AdditionalDocumentFile)</AdditionalDocumentFile>
     </Xdcmake>
   </ItemDefinitionGroup>
   <ItemGroup>

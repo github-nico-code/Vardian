@@ -13,6 +13,11 @@
 #define IDR_MAINFRAME                   128
 #define IDC_STATIC                      -1
 
+// Define constants
+#define WM_MYMESSAGE (WM_USER + 1)
+#define IDI_MYICON 101
+
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

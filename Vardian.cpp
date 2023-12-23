@@ -1,4 +1,6 @@
 // Vardian.cpp : Definiert den Einstiegspunkt für die Anwendung.
+// 
+// Source code created with the help of ChatGPT. It was a great help for me.
 //
 
 #include "framework.h"
@@ -15,6 +17,7 @@
 #include <util/u_debug.h>
 #include <locale>
 #include <codecvt>
+#include <shellapi.h>
 
 #define MAX_LOADSTRING 100
 
@@ -32,6 +35,9 @@ HWND hWnd = NULL;                               // main window
 bool running = false;
 RECT sourceRect = { 500, 500, 2420, 1580 };
 
+// Declare global variables
+NOTIFYICONDATA nid;
+
 // Vorwärtsdeklarationen der in diesem Codemodul enthaltenen Funktionen:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -39,6 +45,8 @@ BOOL                DeInitInstance();
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 bool                InitializeRokidWindow(HWND hWnd);
+void                AddTaskbarIcon();
+void                RemoveTaskbarIcon();
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -80,6 +88,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Find Rokid Max device and start screen copy functionality
     InitializeRokidWindow(hWnd);
  
+    // Add taskbar icon
+    AddTaskbarIcon();
+
     MSG msg;
 
     // Hauptnachrichtenschleife:
@@ -91,6 +102,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
     }
+
+    // Remove taskbar icon
+    RemoveTaskbarIcon();
 
     if (!DeInitInstance()) {
         return FALSE;
@@ -149,9 +163,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    // set size of Rokid Max
    RECT hostWindowRect = { 0,0,1920,1080 };
 
-   hWnd = CreateWindowEx(WS_EX_TOPMOST | WS_EX_LAYERED /* | WS_EX_TOOLWINDOW */,
+   hWnd = CreateWindowEx(WS_EX_TOPMOST | WS_EX_LAYERED /* WS_EX_TOOLWINDOW */,
        szWindowClass, szTitle, 
-       WS_SIZEBOX | WS_SYSMENU | WS_CLIPCHILDREN | WS_CAPTION | WS_MAXIMIZEBOX,
+       /* WS_SIZEBOX | WS_SYSMENU | */ WS_CLIPCHILDREN | /* WS_CAPTION  |  WS_MAXIMIZEBOX | */ WS_POPUP,
        hostWindowRect.left,
        hostWindowRect.top,
        hostWindowRect.right - hostWindowRect.left,
@@ -167,7 +181,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    // Make the window opaque.
    SetLayeredWindowAttributes(hWnd, 0, 255, LWA_ALPHA);
 
-   ShowWindow(hWnd, SW_SHOWMINIMIZED /*TODO Maybe later: , SW_HIDE*/);
+   ShowWindow(hWnd, SW_SHOWMINIMIZED );
    UpdateWindow(hWnd);
 
    return TRUE;
@@ -214,7 +228,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // Menüauswahl analysieren:
             switch (wmId)
             {
-            case IDM_ABOUT:
+            case 1:
+                // Exit the program
+                DestroyWindow(hWnd);
+                break;
+            case 2:
+//            case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
             default:
@@ -318,6 +337,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         GetClientRect(hWnd, &clientRect);
         sourceRect.right = sourceRect.left + clientRect.right - clientRect.left;
         sourceRect.bottom = sourceRect.top + clientRect.bottom - clientRect.top;
+        break;
+    case WM_MYMESSAGE:
+        // Handle taskbar icon events
+        switch (lParam)
+        {
+        case WM_LBUTTONDBLCLK:
+            // Restore window on double click
+            ShowWindow(hWnd, SW_RESTORE);
+            break;
+        case WM_RBUTTONDOWN:
+            // Show a simple menu on right click
+            HMENU hMenu = CreatePopupMenu();
+            AppendMenu(hMenu, MF_STRING, 1, L"Exit");
+            AppendMenu(hMenu, MF_STRING, 2, L"About");
+            POINT pt;
+            GetCursorPos(&pt);
+            SetForegroundWindow(hWnd);
+            TrackPopupMenu(hMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_BOTTOMALIGN, pt.x, pt.y, 0, hWnd, NULL);
+            DestroyMenu(hMenu);
+            break;
+        }
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -686,4 +726,27 @@ bool InitializeRokidWindow(HWND hWnd) {
     running = true;
 
     return true;
+}
+
+// Function to add taskbar icon
+void AddTaskbarIcon()
+{
+    // Initialize NOTIFYICONDATA structure
+    nid.cbSize = sizeof(NOTIFYICONDATA);
+    nid.hWnd = hWnd;
+    nid.uID = IDI_MYICON;
+    nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    nid.uCallbackMessage = WM_MYMESSAGE;
+    nid.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_VARDIAN));
+    lstrcpy(nid.szTip, L"This is a taskbar icon");
+
+    // Add the icon
+    Shell_NotifyIcon(NIM_ADD, &nid);
+}
+
+// Function to remove taskbar icon
+void RemoveTaskbarIcon()
+{
+    // Remove the icon
+    Shell_NotifyIcon(NIM_DELETE, &nid);
 }

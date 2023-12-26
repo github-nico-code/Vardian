@@ -11,6 +11,7 @@ I have taken some files from Monado for this project. Thanks for that.
 
 I have taken some files from microsoft samples. Thanks for that.
 
+
 What does this software do:
 
     Detect whether Rokid Max is connected.

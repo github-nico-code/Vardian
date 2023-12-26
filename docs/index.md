@@ -2,6 +2,8 @@
 layout: default
 ---
 
+# Introduction
+
 This software is still in alpha status.
 
 Vardian is a program to use the Rokid Max device to look at a multi monitor setup 
@@ -54,7 +56,8 @@ Next steps could be:
 
 [Void Computing Rokid Max information](https://voidcomputing.hu/blog/good-bad-ugly/#the-rokid-air-mcu-protocol)
 
-![Branching](docs/ar_glasses.jpeg)
+![VARDIAN in action ;)](ar_glasses.jpeg)
+
 ```
-The final element.
+Good luck and a lot of success to all coders.
 ```

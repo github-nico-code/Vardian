@@ -201,6 +201,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="Header.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="src\cjson\cJSON.h" />
     <ClInclude Include="src\math\m_api.h" />
@@ -244,6 +245,8 @@
     <ClInclude Include="Vardian.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Quelle.cpp" />
+    <ClCompile Include="Quelle1.cpp" />
     <ClCompile Include="src\cjson\cJSON.c" />
     <ClCompile Include="src\math\m_base.cpp" />
     <ClCompile Include="src\math\m_filter_fifo.c" />
@@ -277,6 +280,8 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
+    <None Include="index.md" />
+    <None Include="_config.yml" />
     <Text Include="LICENSE.txt">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</DeploymentContent>

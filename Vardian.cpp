@@ -46,6 +46,7 @@ BOOL                InitInstance(HINSTANCE, int);
 BOOL                DeInitInstance();
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK    Properties(HWND, UINT, WPARAM, LPARAM);
 bool                InitializeRokidWindow(HWND hWnd);
 void                AddTaskbarIcon();
 void                RemoveTaskbarIcon();
@@ -162,16 +163,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Instanzenhandle in der globalen Variablen speichern
 
-   // set size of Rokid Max
-   RECT hostWindowRect = { 0,0,0,0 };
-
+   // create small window
    hWnd = CreateWindowEx(WS_EX_TOPMOST | WS_EX_LAYERED /* WS_EX_TOOLWINDOW */,
        szWindowClass, szTitle, 
        /* WS_SIZEBOX | WS_SYSMENU | */ WS_CLIPCHILDREN | /* WS_CAPTION  |  WS_MAXIMIZEBOX | */ WS_POPUP,
-       hostWindowRect.left,
-       hostWindowRect.top,
-       hostWindowRect.right - hostWindowRect.left,
-       hostWindowRect.bottom - hostWindowRect.top,
+       0,
+       0,
+       0,
+       0,
        nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
@@ -235,8 +234,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 DestroyWindow(hWnd);
                 break;
             case 2:
-//            case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+                break;
+            case 3:
+                DialogBox(hInst, MAKEINTRESOURCE(IDD_PROPPAGE_MEDIUM), hWnd, Properties);
                 break;
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
@@ -351,8 +352,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_RBUTTONDOWN:
             // Show a simple menu on right click
             HMENU hMenu = CreatePopupMenu();
-            AppendMenu(hMenu, MF_STRING, 1, L"Exit");
+            AppendMenu(hMenu, MF_STRING, 3, L"Properties");
             AppendMenu(hMenu, MF_STRING, 2, L"About");
+            AppendMenu(hMenu, MF_STRING, 1, L"Exit");
             POINT pt;
             GetCursorPos(&pt);
             SetForegroundWindow(hWnd);
@@ -384,6 +386,29 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
             ShellExecute(0, 0, L"https://github-nico-code.github.io/Vardian/", 0, 0, SW_SHOW);
         }
         else if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+        {
+            EndDialog(hDlg, LOWORD(wParam));
+            return (INT_PTR)TRUE;
+        }
+        break;
+    }
+    return (INT_PTR)FALSE;
+}
+
+// Meldungshandler für Properties-Dialog.
+INT_PTR CALLBACK Properties(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    UNREFERENCED_PARAMETER(lParam);
+
+    switch (message)
+    {
+    case WM_INITDIALOG:
+    {
+        return (INT_PTR)TRUE;
+    }
+
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDC_BTN_PROP_OK || LOWORD(wParam) == IDC_BTN_PROP_CANCEL )
         {
             EndDialog(hDlg, LOWORD(wParam));
             return (INT_PTR)TRUE;
@@ -638,8 +663,10 @@ bool InitializeRokidWindow(HWND hWnd) {
             rokid_device = NULL;
         }
 
-        // show window minimized
-        ShowWindow(hWnd, SW_SHOWMINIMIZED /*TODO Maybe later: , SW_HIDE*/);
+
+        // shrink window size to 0x0
+        SetWindowPos(hWnd, 0, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SW_SHOWMINIMIZED);
 
         running = false;
     }

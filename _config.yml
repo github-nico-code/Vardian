@@ -1,0 +1,7 @@
+title: VARDIAN Homepage
+description: VARDIAN multi window virtual screen viewer for Windows with Rokid Max 3DOF functionality.
+show_downloads: true
+google_analytics: O5ad6wKUk49GuNQIfXdGN8cpEUKBnAqCRJnIWViTLNI
+remote_theme: pages-themes/leap-day@v0.2.0
+plugins:
+- jekyll-remote-theme # add this line to the plugins list if you already have one

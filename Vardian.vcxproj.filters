@@ -16,6 +16,9 @@
     <Filter Include="docs">
       <UniqueIdentifier>{de74382f-76a6-430e-9c8d-595ff49987fd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Jenkyll-Site-Files">
+      <UniqueIdentifier>{a56e2c94-5e82-488c-99d2-e20572309055}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -144,6 +147,9 @@
     <ClInclude Include="src\rokid_interface.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="Header.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Vardian.cpp">
@@ -209,6 +215,12 @@
     <ClCompile Include="src\rokid_hmd.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="Quelle.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="Quelle1.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Vardian.rc">
@@ -228,6 +240,12 @@
     <None Include="vcpkg.json" />
     <None Include="docs\index.htm">
       <Filter>docs</Filter>
+    </None>
+    <None Include="_config.yml">
+      <Filter>Jenkyll-Site-Files</Filter>
+    </None>
+    <None Include="index.md">
+      <Filter>Jenkyll-Site-Files</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

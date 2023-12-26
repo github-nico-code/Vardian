@@ -21,6 +21,8 @@
 
 #define MAX_LOADSTRING 100
 
+#define WM_MYMESSAGE (WM_USER + 100)
+
 // Globale Variablen:
 HINSTANCE hInst;                                // Aktuelle Instanz
 WCHAR szTitle[MAX_LOADSTRING];                  // Titelleistentext
@@ -127,7 +129,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 //
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
-    WNDCLASSEXW wcex;
+    WNDCLASSEXW wcex{};
 
     wcex.cbSize = sizeof(WNDCLASSEX);
 
@@ -161,7 +163,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hInst = hInstance; // Instanzenhandle in der globalen Variablen speichern
 
    // set size of Rokid Max
-   RECT hostWindowRect = { 0,0,1920,1080 };
+   RECT hostWindowRect = { 0,0,0,0 };
 
    hWnd = CreateWindowEx(WS_EX_TOPMOST | WS_EX_LAYERED /* WS_EX_TOOLWINDOW */,
        szWindowClass, szTitle, 
@@ -251,7 +253,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             IntersectRect(&intersectSource, &sourceRect, &virtualScreenRectWithoutRokidMax);
 
-            SIZE intersectSize;
+            SIZE intersectSize = { 0,0 };
             intersectSize.cx = intersectSource.right - intersectSource.left;
             intersectSize.cy = intersectSource.bottom - intersectSource.top;
 
@@ -369,13 +371,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
     UNREFERENCED_PARAMETER(lParam);
+   
     switch (message)
     {
     case WM_INITDIALOG:
+    {
         return (INT_PTR)TRUE;
+    }
 
     case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+        if (LOWORD(wParam) == IDHOMEPAGE) {
+            ShellExecute(0, 0, L"https://github-nico-code.github.io/Vardian/", 0, 0, SW_SHOW);
+        }
+        else if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
         {
             EndDialog(hDlg, LOWORD(wParam));
             return (INT_PTR)TRUE;
@@ -402,6 +410,8 @@ std::string ws2s(const wchar_t* pcs)
 {
     int res;
     char buf[0x400];
+    // clear buffer
+    memset(buf, 0, 0x400);
     char* pbuf = buf;
     std::shared_ptr<char[]> shared_pbuf;
 
@@ -738,7 +748,7 @@ void AddTaskbarIcon()
     nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.uCallbackMessage = WM_MYMESSAGE;
     nid.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_VARDIAN));
-    lstrcpy(nid.szTip, L"This is a taskbar icon");
+    lstrcpy(nid.szTip, L"Right mouse click for menu.");
 
     // Add the icon
     Shell_NotifyIcon(NIM_ADD, &nid);

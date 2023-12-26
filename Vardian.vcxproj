@@ -280,16 +280,13 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <None Include="index.md" />
-    <None Include="_config.yml" />
     <Text Include="LICENSE.txt">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</DeploymentContent>
       <FileType>Document</FileType>
     </Text>
-    <None Include="docs\index.htm">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
+    <None Include="docs\index.md" />
+    <None Include="docs\_config.yml" />
     <None Include="README.md">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>

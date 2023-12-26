@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="docs">
-      <UniqueIdentifier>{de74382f-76a6-430e-9c8d-595ff49987fd}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Jenkyll-Site-Files">
       <UniqueIdentifier>{a56e2c94-5e82-488c-99d2-e20572309055}</UniqueIdentifier>
     </Filter>
@@ -238,13 +235,10 @@
   <ItemGroup>
     <None Include="README.md" />
     <None Include="vcpkg.json" />
-    <None Include="docs\index.htm">
-      <Filter>docs</Filter>
-    </None>
-    <None Include="_config.yml">
+    <None Include="docs\_config.yml">
       <Filter>Jenkyll-Site-Files</Filter>
     </None>
-    <None Include="index.md">
+    <None Include="docs\index.md">
       <Filter>Jenkyll-Site-Files</Filter>
     </None>
   </ItemGroup>

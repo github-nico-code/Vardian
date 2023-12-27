@@ -8,7 +8,6 @@
 #define IDS_APP_TITLE                   103
 #define IDD_ABOUTBOX                    103
 #define IDM_ABOUT                       104
-#define IDD_PROPPAGE_MEDIUM             106
 #define IDI_VARDIAN                     107
 #define IDI_SMALL                       108
 #define IDC_VARDIAN                     109
@@ -16,10 +15,6 @@
 #define IDC_MFCLINK1                    1000
 #define IDHOMEPAGE                      1000
 #define IDC_BUTTON1                     1002
-#define IDC_BTN_PROP_OK                 1002
-#define IDC_SLIDER_SENSIBILITY          1003
-#define IDC_STATIC_SENSIBILITY          1004
-#define IDC_BTN_PROP_CANCEL             1005
 #define IDC_SPIN1                       1006
 #define IDC_STATIC                      -1
 

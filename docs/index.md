@@ -2,6 +2,7 @@
 layout: default
 ---
 
+
 # Introduction
 
 This software is still in alpha status.
@@ -9,7 +10,8 @@ This software is still in alpha status.
 Vardian is a program to use the Rokid Max device to look at a multi monitor setup 
 for Windows PCs. It uses the 3DOF functionality to navigate
 a Window opened at the Rokid Max screen about the virtual windows
-monitors.
+monitors. For correct functionality, the Rokid Max has to be connected to the
+Windows PC via USB C.
 
 # Releases
 
@@ -56,7 +58,8 @@ Next steps could be:
 
 [Void Computing Rokid Max information](https://voidcomputing.hu/blog/good-bad-ugly/#the-rokid-air-mcu-protocol)
 
-![VARDIAN in action ;)](ar_glasses.jpeg)
+![VARDIAN in action;)](ar_glasses.jpeg)
+Picture: Generated with Dall e from OpenAI and Bing
 
 ```
 Good luck and a lot of success to all coders.

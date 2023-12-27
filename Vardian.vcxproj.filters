@@ -212,12 +212,6 @@
     <ClCompile Include="src\rokid_hmd.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="Quelle.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="Quelle1.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Vardian.rc">

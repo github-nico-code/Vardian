@@ -245,8 +245,6 @@
     <ClInclude Include="Vardian.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Quelle.cpp" />
-    <ClCompile Include="Quelle1.cpp" />
     <ClCompile Include="src\cjson\cJSON.c" />
     <ClCompile Include="src\math\m_base.cpp" />
     <ClCompile Include="src\math\m_filter_fifo.c" />

@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Vardian_Setup", "Vardian_Setup.vdproj", "{4C27BAAB-5369-4CA2-B48E-0367946499E2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Default = Debug|Default
+		Release|Default = Release|Default
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4C27BAAB-5369-4CA2-B48E-0367946499E2}.Debug|Default.ActiveCfg = Debug
+		{4C27BAAB-5369-4CA2-B48E-0367946499E2}.Debug|Default.Build.0 = Debug
+		{4C27BAAB-5369-4CA2-B48E-0367946499E2}.Release|Default.ActiveCfg = Release
+		{4C27BAAB-5369-4CA2-B48E-0367946499E2}.Release|Default.Build.0 = Release
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {80EE4DE5-47BA-40BC-BC93-0053F3CE08FB}
+	EndGlobalSection
+EndGlobal

@@ -18,6 +18,7 @@
 #include <locale>
 #include <codecvt>
 #include <shellapi.h>
+#include "helpers.h"
 
 #define MAX_LOADSTRING 100
 
@@ -31,11 +32,10 @@ static struct xrt_device* rokid_device = NULL;  // Pointer to Rokid Max
 UINT_PTR timerId = NULL;                        // timer to copy part of screen to Rokid Max
 const UINT timerInterval = 16;                  // close to the refresh rate @60hz
 RECT virtualScreenRectWithoutRokidMax;          // values of the virtual screen without the X axis from Rokid Max
-HDC hdcWindow = NULL;                           // DC to copy to
-HDC hdcScreen = NULL;                           // DC from the whole virtual screen
 HWND hWnd = NULL;                               // main window
 bool running = false;
 RECT sourceRect = { 500, 500, 2420, 1580 };
+HDC hdcScreen = NULL;
 
 // Declare global variables
 NOTIFYICONDATA nid;
@@ -103,6 +103,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+
     }
 
     // Remove taskbar icon
@@ -258,64 +259,69 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             RECT intersectClientRect = intersectSource;
             OffsetRect(&intersectClientRect, -sourceRect.left, -sourceRect.top);
 
-            // The source DC is the entire screen, and the destination DC is the current window (HWND).
-            if (!BitBlt(hdc /*hdcWindow*/,
-                intersectClientRect.left, intersectClientRect.top,
-                intersectClientRect.right, intersectClientRect.bottom,
-                hdcScreen,
-                intersectSource.left, intersectSource.top,
-                SRCCOPY))
-            {
-                std::string the_out = std::string("BitBlt failed: ") +
-                    " intersectSource.left, top, width x heigt:  " + std::to_string(intersectSource.left) +
-                    ", " + std::to_string(intersectSource.top) +
-                    ", " + std::to_string(intersectSource.right - intersectSource.left) + " x " + std::to_string(intersectSource.bottom - intersectSource.top) +
-                    " intersectClientRect.left, top, width x height  " + std::to_string(intersectClientRect.left) +
-                    ", " + std::to_string(intersectClientRect.top) +
-                    ", " + std::to_string(intersectSize.cx) + " x " + std::to_string(intersectSize.cy) +
-                    " ps.rcPaint.left, top, width x height  " + std::to_string(ps.rcPaint.left) +
-                    ", " + std::to_string(ps.rcPaint.top) +
-                    ", " + std::to_string(ps.rcPaint.right - ps.rcPaint.left) + " x " + std::to_string(ps.rcPaint.bottom - ps.rcPaint.top);
-                U_LOG(U_LOGGING_TRACE, the_out.c_str());
-            }
+                // The source DC is the entire screen, and the destination DC is the current window (HWND).
+                BOOL bitblt_result = BitBlt(hdc,
+                    intersectClientRect.left, intersectClientRect.top,
+                    intersectClientRect.right, intersectClientRect.bottom,
+                    hdcScreen,
+                    intersectSource.left, intersectSource.top,
+                    SRCCOPY);
+                if (!bitblt_result) {
+                    std::string the_out = std::string("BitBlt failed: ") +
+                        " intersectSource.left, top, width x heigt:  " + std::to_string(intersectSource.left) +
+                        ", " + std::to_string(intersectSource.top) +
+                        ", " + std::to_string(intersectSource.right - intersectSource.left) + " x " + std::to_string(intersectSource.bottom - intersectSource.top) +
+                        " intersectClientRect.left, top, width x height  " + std::to_string(intersectClientRect.left) +
+                        ", " + std::to_string(intersectClientRect.top) +
+                        ", " + std::to_string(intersectSize.cx) + " x " + std::to_string(intersectSize.cy) +
+                        " ps.rcPaint.left, top, width x height  " + std::to_string(ps.rcPaint.left) +
+                        ", " + std::to_string(ps.rcPaint.top) +
+                        ", " + std::to_string(ps.rcPaint.right - ps.rcPaint.left) + " x " + std::to_string(ps.rcPaint.bottom - ps.rcPaint.top) +
+                        ", GetLastError: " + getErrorCodeDescription(GetLastError());
+                    U_LOG(U_LOGGING_ERROR, the_out.c_str());
+                }
 
-            HRGN clientRgn = CreateRectRgnIndirect(&intersectClientRect);
-            HRGN targetWindowRgn = CreateRectRgnIndirect(&ps.rcPaint);
-            HRGN destRgn = CreateRectRgn(0, 0, 1, 1);
+                if (ReleaseDC(desktopWindow, hdcScreen) != 1) {
+                    U_LOG(U_LOGGING_ERROR, "ReleaseDC failed with error: ", getErrorCodeDescription(GetLastError()));
+                }
 
-            // we only have to fill a region if it is a COMPLEXREGION or a simple rect
-            int regionType = CombineRgn(destRgn, targetWindowRgn, clientRgn, RGN_XOR);
+                HRGN clientRgn = CreateRectRgnIndirect(&intersectClientRect);
+                HRGN targetWindowRgn = CreateRectRgnIndirect(&ps.rcPaint);
+                HRGN destRgn = CreateRectRgn(0, 0, 1, 1);
 
-            if ((regionType == SIMPLEREGION) || (regionType == COMPLEXREGION)) {
-                FillRgn(hdc, destRgn, (HBRUSH)GetStockObject(BLACK_BRUSH));
-            }
+                // we only have to fill a region if it is a COMPLEXREGION or a simple rect
+                int regionType = CombineRgn(destRgn, targetWindowRgn, clientRgn, RGN_XOR);
 
-            DeleteObject(clientRgn);
-            DeleteObject(targetWindowRgn);
-            DeleteObject(destRgn);
+                if ((regionType == SIMPLEREGION) || (regionType == COMPLEXREGION)) {
+                    FillRgn(hdc, destRgn, (HBRUSH)GetStockObject(BLACK_BRUSH));
+                }
 
-            // Draw frame around valid virtual screen
-            RECT frameRect = virtualScreenRectWithoutRokidMax;
-            OffsetRect(&frameRect, -sourceRect.left, -sourceRect.top);
+                DeleteObject(clientRgn);
+                DeleteObject(targetWindowRgn);
+                DeleteObject(destRgn);
 
-            FrameRect(hdc, &frameRect, (HBRUSH)GetStockObject(GRAY_BRUSH));
+                // Draw frame around valid virtual screen
+                RECT frameRect = virtualScreenRectWithoutRokidMax;
+                OffsetRect(&frameRect, -sourceRect.left, -sourceRect.top);
 
-            SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-            CURSORINFO cursor = { sizeof(cursor) };
-            GetCursorInfo(&cursor);
+                FrameRect(hdc, &frameRect, (HBRUSH)GetStockObject(GRAY_BRUSH));
 
-            if (cursor.flags == CURSOR_SHOWING) {
-                ICONINFO info = { sizeof(info) };
-                GetIconInfo(cursor.hCursor, &info);
-                const int x = cursor.ptScreenPos.x - sourceRect.left - info.xHotspot;
-                const int y = cursor.ptScreenPos.y - sourceRect.top - info.yHotspot;
-                BITMAP bmpCursor = { 0 };
-                GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
-                DrawIconEx(hdc, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
-                    0, NULL, DI_NORMAL);
-            }
+                SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+                CURSORINFO cursor = { sizeof(cursor) };
+                GetCursorInfo(&cursor);
 
-            EndPaint(hWnd, &ps);
+                if (cursor.flags == CURSOR_SHOWING) {
+                    ICONINFO info = { sizeof(info) };
+                    GetIconInfo(cursor.hCursor, &info);
+                    const int x = cursor.ptScreenPos.x - sourceRect.left - info.xHotspot;
+                    const int y = cursor.ptScreenPos.y - sourceRect.top - info.yHotspot;
+                    BITMAP bmpCursor = { 0 };
+                    GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
+                    DrawIconEx(hdc, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
+                        0, NULL, DI_NORMAL);
+                }
+
+                EndPaint(hWnd, &ps);
         }
         break;
     case WM_DESTROY:
@@ -724,13 +730,23 @@ bool InitializeRokidWindow(HWND hWnd) {
         monitor_struct.DevMode.dmPosition.x, monitor_struct.DevMode.dmPosition.y,
         monitor_struct.DevMode.dmPelsWidth, monitor_struct.DevMode.dmPelsHeight);
 
-    hdcWindow = GetDC(hWnd);
-    hdcScreen = GetDC(NULL);
-
     // Create a timer to update the control. But only if Rokid Max is connected
     timerId = SetTimer(hWnd, 0, timerInterval, UpdateRokidWindow);
 
+    if (timerId == NULL) {
+        // timer creation failed
+        U_LOG(U_LOGGING_ERROR, "Timer creation failed with Erro: %s", getErrorCodeDescription(GetLastError()));
+        return false;
+    }
+
     U_LOG(U_LOGGING_TRACE, "Timer started.");
+
+    hdcScreen = GetDC(NULL);
+
+    if (hdcScreen == NULL) {
+        U_LOG(U_LOGGING_ERROR, "GetDC failed.");
+        return false;
+    }
 
     running = true;
 

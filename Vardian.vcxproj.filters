@@ -147,6 +147,9 @@
     <ClInclude Include="Header.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="src\helpers.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Vardian.cpp">
@@ -210,6 +213,9 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="src\rokid_hmd.c">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="helpers.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

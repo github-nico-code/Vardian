@@ -9,6 +9,8 @@
  * @ingroup drv_rokid
  */
 
+#include "helpers.h"
+
 #include "rokid_interface.h"
 
 #include "xrt/xrt_defines.h"
@@ -279,11 +281,11 @@ rokid_usb_thread(void *ptr)
 	struct rokid_hmd *rokid = ptr;
 
 	bool ok = true;
+	unsigned char usb_buffer[ROKID_USB_BUFFER_LEN] = { 0 };
 
 	os_thread_helper_lock(&rokid->usb_thread);
 	while (os_thread_helper_is_running_locked(&rokid->usb_thread) && ok) {
 		DWORD read_length = 0;
-		unsigned char usb_buffer[ROKID_USB_BUFFER_LEN] = { 0 };
 
 		//
 		// If NULL returned, then we cannot proceed any farther so we just exit the 
@@ -360,26 +362,6 @@ rokid_hmd_set_display_mode(struct rokid_hmd *rokid, uint16_t mode)
 	}
 	*/
 	return true;
-}
-
-char* getErrorCodeDescription(long errorCode)
-{
-	static char MessageFromSystem[1024];
-	static char ReturnMessage[2000];
-	bool messageReceived = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM,
-		0,
-		errorCode,
-		1033,                          // US English
-		MessageFromSystem,
-		1024,
-		0);
-
-	if (!messageReceived)
-		sprintf_s(ReturnMessage, 2000, "Error code: %i", errorCode );
-	else
-		sprintf_s(ReturnMessage, 2000,  "Error code '%i' with message: '%s'", errorCode, MessageFromSystem );
-
-	return ReturnMessage;
 }
 
 char* ws2s(const wchar_t* pcs)

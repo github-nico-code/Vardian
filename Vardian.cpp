@@ -281,10 +281,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     U_LOG(U_LOGGING_ERROR, the_out.c_str());
                 }
 
-                if (ReleaseDC(desktopWindow, hdcScreen) != 1) {
-                    U_LOG(U_LOGGING_ERROR, "ReleaseDC failed with error: ", getErrorCodeDescription(GetLastError()));
-                }
-
                 HRGN clientRgn = CreateRectRgnIndirect(&intersectClientRect);
                 HRGN targetWindowRgn = CreateRectRgnIndirect(&ps.rcPaint);
                 HRGN destRgn = CreateRectRgn(0, 0, 1, 1);
@@ -641,6 +637,11 @@ bool InitializeRokidWindow(HWND hWnd) {
             rokid_device = NULL;
         }
 
+        if (ReleaseDC(NULL, hdcScreen) != 1) {
+            U_LOG(U_LOGGING_ERROR, "ReleaseDC failed with error: ", getErrorCodeDescription(GetLastError()));
+        }
+
+        hdcScreen = NULL;
 
         // shrink window size to 0x0
         SetWindowPos(hWnd, 0, 0, 0, 0, 0,

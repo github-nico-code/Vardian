@@ -9,15 +9,24 @@ Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Vardian_Setup", "Vardian_Se
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Debug|x64.ActiveCfg = Debug|x64
+		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Debug|x64.Build.0 = Debug|x64
 		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Debug|x86.ActiveCfg = Debug|Win32
 		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Debug|x86.Build.0 = Debug|Win32
+		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Release|x64.ActiveCfg = Release|x64
+		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Release|x64.Build.0 = Release|x64
 		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Release|x86.ActiveCfg = Release|Win32
 		{7E2D91C7-CE65-474B-BA0C-D8FBB08E0932}.Release|x86.Build.0 = Release|Win32
+		{8F9C32C7-65A1-4246-BF99-BA76B3347373}.Debug|x64.ActiveCfg = Debug
 		{8F9C32C7-65A1-4246-BF99-BA76B3347373}.Debug|x86.ActiveCfg = Debug
+		{8F9C32C7-65A1-4246-BF99-BA76B3347373}.Release|x64.ActiveCfg = Release
+		{8F9C32C7-65A1-4246-BF99-BA76B3347373}.Release|x64.Build.0 = Release
 		{8F9C32C7-65A1-4246-BF99-BA76B3347373}.Release|x86.ActiveCfg = Release
 		{8F9C32C7-65A1-4246-BF99-BA76B3347373}.Release|x86.Build.0 = Release
 	EndGlobalSection

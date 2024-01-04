@@ -302,19 +302,42 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                 FrameRect(hdc, &frameRect, (HBRUSH)GetStockObject(GRAY_BRUSH));
 
-                SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+                // TODO: Do I still need setting the DPI awareness
+                // SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
                 CURSORINFO cursor = { sizeof(cursor) };
-                GetCursorInfo(&cursor);
-
+                if (GetCursorInfo(&cursor) == NULL) {
+                    U_LOG(U_LOGGING_ERROR, "GetCursorInfo failed with error: %s", 
+                        getErrorCodeDescription(GetLastError()));
+                }
+                
                 if (cursor.flags == CURSOR_SHOWING) {
                     ICONINFO info = { sizeof(info) };
-                    GetIconInfo(cursor.hCursor, &info);
+                    if (GetIconInfo(cursor.hCursor, &info) == NULL) {
+                        U_LOG(U_LOGGING_ERROR, "GetIconInfo failed with error: %s",
+                            getErrorCodeDescription(GetLastError()));
+                    }
+
                     const int x = cursor.ptScreenPos.x - sourceRect.left - info.xHotspot;
                     const int y = cursor.ptScreenPos.y - sourceRect.top - info.yHotspot;
                     BITMAP bmpCursor = { 0 };
-                    GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
-                    DrawIconEx(hdc, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
-                        0, NULL, DI_NORMAL);
+
+                    int result = GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
+                    if ( result == 0) {
+                        DWORD last_error = GetLastError();
+                        if (last_error != 0) {
+                            // it seams to be 0 if cursor bitmap was already there - I do not know
+                            U_LOG(U_LOGGING_ERROR, "GetObject for Cursor bitmap failed with error: %s",
+                                getErrorCodeDescription(GetLastError()));
+                        }
+                    }
+                    if (DrawIconEx(hdc, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
+                        0, NULL, DI_NORMAL) == 0)
+                    {
+                        U_LOG(U_LOGGING_ERROR, "DrawIconEx failed with error: %s",
+                            getErrorCodeDescription(GetLastError()));
+                    }
+                    DeleteObject(info.hbmColor);
+                    DeleteObject(info.hbmMask);
                 }
 
                 EndPaint(hWnd, &ps);

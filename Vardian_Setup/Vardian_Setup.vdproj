@@ -45,6 +45,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_607CEE2AAE6E4C9FB9A649EE119ECD62"
+        "OwnerKey" = "8:_7B0B4FA693544686B5AB7C832CB10978"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_658DE062ECD6A2DB784D8FF28D5EF5E0"
         "OwnerKey" = "8:_7B0B4FA693544686B5AB7C832CB10978"
         "MsmSig" = "8:_UNDEFINED"
@@ -70,12 +76,6 @@
         "Entry"
         {
         "MsmKey" = "8:_8CFC56BC0CF668A94E03F13C0C05DE06"
-        "OwnerKey" = "8:_7B0B4FA693544686B5AB7C832CB10978"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_8FC85524ABAF9084D0F415544353CECD"
         "OwnerKey" = "8:_7B0B4FA693544686B5AB7C832CB10978"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -308,6 +308,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_607CEE2AAE6E4C9FB9A649EE119ECD62"
+            {
+            "SourcePath" = "8:pthreadVC3.dll"
+            "TargetName" = "8:pthreadVC3.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_2A79AC438C9D4A44AFFD90D78C4FE98B"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_658DE062ECD6A2DB784D8FF28D5EF5E0"
             {
             "SourcePath" = "8:api-ms-win-crt-heap-l1-1-0.dll"
@@ -385,26 +405,6 @@
             "PackageAs" = "3:1"
             "Register" = "3:1"
             "Exclude" = "11:TRUE"
-            "IsDependency" = "11:TRUE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8FC85524ABAF9084D0F415544353CECD"
-            {
-            "SourcePath" = "8:pthreadVC3.dll"
-            "TargetName" = "8:pthreadVC3.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_2A79AC438C9D4A44AFFD90D78C4FE98B"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
             "IsDependency" = "11:TRUE"
             "IsolateTo" = "8:"
             }
@@ -604,15 +604,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Vardian"
-        "ProductCode" = "8:{E5DCE577-B0EF-42C4-B661-C58BE42873DD}"
-        "PackageCode" = "8:{7F1953C6-98FD-43C3-BE31-144FE6739C57}"
+        "ProductCode" = "8:{FF6B973B-37B4-401B-952E-58C1E55C2E8D}"
+        "PackageCode" = "8:{297213DA-3E1A-4E01-80B0-AD2AEDE0B63B}"
         "UpgradeCode" = "8:{392228E7-9243-4598-86C0-4896B2824546}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:0.6"
+        "ProductVersion" = "8:0.7"
         "Manufacturer" = "8:Vardian"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:https://github-nico-code.github.io/Vardian/"
@@ -764,7 +764,7 @@
             "Target" = "8:_7B0B4FA693544686B5AB7C832CB10978"
             "Folder" = "8:_43983B16A57B497B85765B4BF2E2C2E7"
             "WorkingFolder" = "8:_2A79AC438C9D4A44AFFD90D78C4FE98B"
-            "Icon" = "8:"
+            "Icon" = "8:_2C9A8CC91D414E43951594A32E8811E2"
             "Feature" = "8:"
             }
             "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_B5E25E885A264206AC4B6CDB92FDBB50"
@@ -1182,7 +1182,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_7B0B4FA693544686B5AB7C832CB10978"
             {
-            "SourcePath" = "8:..\\Release\\Vardian.exe"
+            "SourcePath" = "8:..\\Win32\\Release\\Vardian.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_2A79AC438C9D4A44AFFD90D78C4FE98B"

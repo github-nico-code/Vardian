@@ -302,8 +302,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                 FrameRect(hdc, &frameRect, (HBRUSH)GetStockObject(GRAY_BRUSH));
 
-                // TODO: Do I still need setting the DPI awareness
-                // SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+                SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
                 CURSORINFO cursor = { sizeof(cursor) };
                 if (GetCursorInfo(&cursor) == NULL) {
                     U_LOG(U_LOGGING_ERROR, "GetCursorInfo failed with error: %s", 

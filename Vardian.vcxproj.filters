@@ -241,6 +241,12 @@
     <None Include="docs\index.md">
       <Filter>Jenkyll-Site-Files</Filter>
     </None>
+    <None Include="idt_time.bin">
+      <Filter>Ressourcendateien</Filter>
+    </None>
+    <None Include="bin00001.bin">
+      <Filter>Ressourcendateien</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="LICENSE.txt" />

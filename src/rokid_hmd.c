@@ -209,6 +209,7 @@ rokid_fusion_parse_usb_packet(struct rokid_fusion *fusion, unsigned char usb_buf
 	case 17: {
 		// New-style combined packet
 		struct rokid_usb_pkt_combined *packet = (struct rokid_usb_pkt_combined *)usb_buffer;
+		U_LOG(U_LOGGING_TRACE, "mogneto y %f", packet->magnetometer.y);
 		fusion->last_gyro = rokid_convert_vector(&packet->gyro);
 		fusion->last_accel = rokid_convert_vector(&packet->accel);
 		fusion->gyro_ts_device = packet->timestamp;
@@ -216,6 +217,7 @@ rokid_fusion_parse_usb_packet(struct rokid_fusion *fusion, unsigned char usb_buf
 		break;
 	}
 	}
+
 
 	// Only update fusion once we have data from both sensors for this timestamp
 	if (fusion->gyro_ts_device == fusion->accel_ts_device) {
@@ -727,7 +729,6 @@ rokid_found(struct xrt_prober *xp,
             struct xrt_prober_device **devices,
             size_t device_count,
             size_t index,
-            cJSON *attached_data,
             struct xrt_device **out_xdev)
 {
 	struct xrt_device *device = rokid_hmd_create(devices[index]);

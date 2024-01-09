@@ -30,9 +30,6 @@
     <ClInclude Include="Vardian.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="src\cjson\cJSON.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="src\math\m_api.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -79,12 +76,6 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="src\util\u_frame.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="src\util\u_json.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="src\util\u_json.hpp">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="src\util\u_logging.h">
@@ -153,9 +144,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Vardian.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="src\cjson\cJSON.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="src\math\m_base.cpp">

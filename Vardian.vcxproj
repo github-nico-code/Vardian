@@ -188,7 +188,6 @@
     <ClInclude Include="framework.h" />
     <ClInclude Include="Header.h" />
     <ClInclude Include="Resource.h" />
-    <ClInclude Include="src\cjson\cJSON.h" />
     <ClInclude Include="src\math\m_api.h" />
     <ClInclude Include="src\math\m_eigen_interop.hpp" />
     <ClInclude Include="src\math\m_filter_fifo.h" />
@@ -207,8 +206,6 @@
     <ClInclude Include="src\util\u_distortion_mesh.h" />
     <ClInclude Include="src\util\u_format.h" />
     <ClInclude Include="src\util\u_frame.h" />
-    <ClInclude Include="src\util\u_json.h" />
-    <ClInclude Include="src\util\u_json.hpp" />
     <ClInclude Include="src\util\u_logging.h" />
     <ClInclude Include="src\util\u_misc.h" />
     <ClInclude Include="src\util\u_time.h" />
@@ -232,7 +229,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="helpers.c" />
-    <ClCompile Include="src\cjson\cJSON.c" />
     <ClCompile Include="src\math\m_base.cpp" />
     <ClCompile Include="src\math\m_filter_fifo.c" />
     <ClCompile Include="src\math\m_imu_3dof.c" />

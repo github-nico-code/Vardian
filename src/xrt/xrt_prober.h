@@ -22,8 +22,6 @@ extern "C" {
  *
  */
 
-struct cJSON;
-typedef struct cJSON cJSON;
 
 struct xrt_fs;
 struct xrt_frame_context;
@@ -566,13 +564,11 @@ struct xrt_builder
 	 *
 	 * @param[in]  xb           Builder self parameter.
 	 * @param[in]  xp           Prober
-	 * @param[in]  config       JSON config object if found for this setter upper.
 	 * @param[out] out_estimate Estimate to be filled out.
 	 *
 	 * @note Code consuming this interface should use xrt_builder_estimate_system()
 	 */
 	xrt_result_t (*estimate_system)(struct xrt_builder *xb,
-	                                cJSON *config,
 	                                struct xrt_prober *xp,
 	                                struct xrt_builder_estimate *out_estimate);
 
@@ -581,14 +577,12 @@ struct xrt_builder
 	 *
 	 * @param[in]  xb        Builder self parameter.
 	 * @param[in]  xp        Prober
-	 * @param[in]  config    JSON config object if found for this setter upper.
 	 * @param[out] out_xsysd Return of system devices, the pointed pointer must be NULL.
 	 * @param[out] out_xso   Return of the @ref xrt_space_overseer, the pointed pointer must be NULL.
 	 *
 	 * @note Code consuming this interface should use xrt_builder_open_system()
 	 */
 	xrt_result_t (*open_system)(struct xrt_builder *xb,
-	                            cJSON *config,
 	                            struct xrt_prober *xp,
 	                            struct xrt_system_devices **out_xsysd,
 	                            struct xrt_space_overseer **out_xso);
@@ -610,11 +604,10 @@ struct xrt_builder
  */
 static inline xrt_result_t
 xrt_builder_estimate_system(struct xrt_builder *xb,
-                            cJSON *config,
                             struct xrt_prober *xp,
                             struct xrt_builder_estimate *out_estimate)
 {
-	return xb->estimate_system(xb, config, xp, out_estimate);
+	return xb->estimate_system(xb, xp, out_estimate);
 }
 
 /*!
@@ -626,12 +619,11 @@ xrt_builder_estimate_system(struct xrt_builder *xb,
  */
 static inline xrt_result_t
 xrt_builder_open_system(struct xrt_builder *xb,
-                        cJSON *config,
                         struct xrt_prober *xp,
                         struct xrt_system_devices **out_xsysd,
                         struct xrt_space_overseer **out_xso)
 {
-	return xb->open_system(xb, config, xp, out_xsysd, out_xso);
+	return xb->open_system(xb, xp, out_xsysd, out_xso);
 }
 
 /*!
@@ -678,7 +670,6 @@ typedef int (*xrt_prober_found_func_t)(struct xrt_prober *xp,
                                        struct xrt_prober_device **devices,
                                        size_t num_devices,
                                        size_t index,
-                                       cJSON *attached_data,
                                        struct xrt_device **out_xdevs);
 
 /*!
@@ -750,7 +741,6 @@ struct xrt_auto_prober
 	 * devices.
 	 *
 	 * @param xap Self pointer
-	 * @param attached_data JSON "attached data" for this device from
 	 * config, if any.
 	 * @param[in] no_hmds If true, do not probe for HMDs, only other
 	 * devices.
@@ -765,7 +755,6 @@ struct xrt_auto_prober
 	 * @note Leeloo Dallas is a reference to The Fifth Element.
 	 */
 	int (*lelo_dallas_autoprobe)(struct xrt_auto_prober *xap,
-	                             cJSON *attached_data,
 	                             bool no_hmds,
 	                             struct xrt_prober *xp,
 	                             struct xrt_device **out_xdevs);

@@ -680,7 +680,7 @@ bool InitializeRokidWindow(HWND hWnd) {
     std::unique_ptr<struct xrt_device*> out_rokid_ptr =
         std::make_unique<struct xrt_device*>(new struct xrt_device[1]);
 
-    if (rokid_found(NULL, &the_rokid_devlist, 1, 0, NULL, out_rokid_ptr.get()) == 1) {
+    if (rokid_found(NULL, &the_rokid_devlist, 1, 0, out_rokid_ptr.get()) == 1) {
         rokid_device = out_rokid_ptr.get()[0];
         U_LOG(U_LOGGING_TRACE, "Rokid Max USB device found.");
 

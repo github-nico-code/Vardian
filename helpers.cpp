@@ -1,7 +1,44 @@
 #include <windows.h>
 #include <stdio.h>
 #include "helpers.h"
+#include <string>
+#include <memory>
+#include <source_location>
+#include <iostream>
 //#include <stdafx.h>
+
+std::string ws2s(const wchar_t* pcs)
+{
+    int res;
+    char buf[0x400];
+    // clear buffer
+    memset(buf, 0, 0x400);
+    char* pbuf = buf;
+    std::shared_ptr<char[]> shared_pbuf;
+
+    res = WideCharToMultiByte(CP_ACP, 0, pcs, -1, buf, sizeof(buf), NULL, NULL);
+
+    if (0 == res && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+    {
+        res = WideCharToMultiByte(CP_ACP, 0, pcs, -1, NULL, 0, NULL, NULL);
+
+        shared_pbuf = std::shared_ptr<char[]>(new char[res]);
+
+        pbuf = shared_pbuf.get();
+
+        res = WideCharToMultiByte(CP_ACP, 0, pcs, -1, pbuf, res, NULL, NULL);
+
+        return std::string(pbuf);
+    }
+    else if (0 == res)
+    {
+        return std::string("´ws2s_ERROR");
+    }
+    else {
+        return std::string(pbuf);
+    }
+}
+
 
 char* getErrorCodeDescription(long errorCode)
 {
@@ -38,7 +75,7 @@ int msgs_to_ignore[] = {//-999,
 // 0x0200 - WM_MOUSEFIRST (26)
 typedef struct {
     unsigned int code;
-    wchar_t* text;
+    std::wstring text;
 } XMSGITEM;
 // These from https://wiki.winehq.org/List_Of_Windows_Messages
 XMSGITEM xmsglist[] =
@@ -412,7 +449,7 @@ void initialise_xmsgs(void)
     xmsgs_initialized = 1;
 }
 //-------------------------------------------------
-wchar_t* GetMessageText(unsigned int msg)
+std::wstring GetMessageText(unsigned int msg)
 {
     int index;
     // Setup ignore list on first call
@@ -431,11 +468,12 @@ wchar_t* GetMessageText(unsigned int msg)
     }
     return (xmsglist[index].text);
 }
+
 //-------------------------------------------------
 #ifdef SHOW_USED_MESSAGES
 void ShowUsedMessages(void)
 {
-    wchar_t str[1024];
+    wchar_t str[1024] = {0};
     wchar_t* p = str;
     int count = 0;
     int lastmsg;
@@ -473,9 +511,42 @@ void ShowUsedMessages(void)
     {
         if (used_freq[i])
         {
-            wsprintf(str, L"// 0x%04X - %s (%d)\n", xmsglist[i].code, xmsglist[i].text, used_freq[i]);
+            wsprintf(str, L"// 0x%04X - %s (%d)\n", xmsglist[i].code, xmsglist[i].text.c_str(), used_freq[i]);
             OutputDebugString(str);
         }
     }
 }
 #endif
+
+void log(std::string_view message,
+    std::source_location location = std::source_location::current()
+) {
+    std::cout << "info:"
+        << location.file_name() << ":"
+        << location.line() << ":"
+        << location.function_name() << " "
+        << message << '\n';
+}
+
+
+void
+log_it(const char* function, enum log_level level, const char* format, ...)
+{
+    va_list args;
+
+    std::string the_output = std::string( "LEVEL=" ) + std::to_string( level ) + 
+        std::string( ", function='" ) + std::string(function) + "' ==> ";
+
+    va_start(args, format);
+    int len = _vscprintf(format, args) + 1;
+    char* buffer = (char*)malloc(len * sizeof(char));
+    if (NULL != buffer)
+    {
+        vsprintf_s(buffer, len, format, args);
+        the_output += buffer + std::string("\n");
+        free(buffer);
+    }
+    va_end(args);
+
+    OutputDebugStringA(the_output.c_str());
+}

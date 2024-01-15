@@ -26,7 +26,7 @@
 
 
 static inline int64_t
-os_ns_per_qpc_tick_get(void)
+os_ns_per_qpc_tick_get(void) noexcept
 {
     static int64_t ns_per_qpc_tick = 0;
     if (ns_per_qpc_tick == 0) {
@@ -40,7 +40,7 @@ os_ns_per_qpc_tick_get(void)
 
 
 static inline uint64_t
-os_monotonic_get_ns(void)
+os_monotonic_get_ns(void) noexcept
 {
     LARGE_INTEGER qpc;
     QueryPerformanceCounter(&qpc);
@@ -55,9 +55,9 @@ WCHAR szTitle[MAX_LOADSTRING];                  // Titelleistentext
 WCHAR szWindowClass[MAX_LOADSTRING];            // Der Klassenname des Hauptfensters.
 Rokid rokid_device;  // Pointer to Rokid Max
 UINT_PTR timerId = NULL;                        // timer to copy part of screen to Rokid Max
-const UINT timerInterval = 16;                  // close to the refresh rate @60hz
+constexpr UINT timerInterval = 16;                  // close to the refresh rate @60hz
 RECT virtualScreenRectWithoutRokidMax;          // values of the virtual screen without the X axis from Rokid Max
-HWND hWnd = NULL;                               // main window
+//HWND hWnd = NULL;                               // main window
 bool running = false;
 RECT sourceRect = { 500, 500, 2420, 1580 };
 HDC hdcScreen = NULL;
@@ -66,14 +66,14 @@ HDC hdcScreen = NULL;
 NOTIFYICONDATA nid;
 
 // Vorwärtsdeklarationen der in diesem Codemodul enthaltenen Funktionen:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
+ATOM                MyRegisterClass(HINSTANCE hInstance) noexcept;
+BOOL                InitInstance(HINSTANCE, int, HWND& hWnd);
 BOOL                DeInitInstance();
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM) noexcept;
 bool                InitializeRokidWindow(HWND hWnd);
-void                AddTaskbarIcon();
-void                RemoveTaskbarIcon();
+void                AddTaskbarIcon(HWND hWnd) noexcept;
+void                RemoveTaskbarIcon() noexcept;
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -82,10 +82,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
-
-    // set log option
-    _putenv("XRT_LOG=trace");
-    _putenv("ROKID_LOG=trace");
 
     wchar_t my_filename[MAX_PATH]; 
     GetModuleFileName(NULL, my_filename, MAX_PATH);
@@ -104,8 +100,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDC_VARDIAN, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
+    HWND hWnd = nullptr;
+
     // Anwendungsinitialisierung ausführen:
-    if (!InitInstance (hInstance, nCmdShow))
+    if (!InitInstance (hInstance, nCmdShow, hWnd))
     {
         return FALSE;
     }
@@ -116,7 +114,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     InitializeRokidWindow(hWnd);
  
     // Add taskbar icon
-    AddTaskbarIcon();
+    AddTaskbarIcon(hWnd);
 
     MSG msg;
 
@@ -140,8 +138,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     LOG_IT(LOG_INFO, "Finish Vardian");
 
-    fclose( new_stdout );
-    fclose( new_stderr );
+    if (new_stdout != NULL) {
+        fclose(new_stdout);
+    }
+    if (new_stderr != NULL) {
+        fclose(new_stderr);
+    }
 
     return (int) msg.wParam;
 }
@@ -153,7 +155,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 //
 //  ZWECK: Registriert die Fensterklasse.
 //
-ATOM MyRegisterClass(HINSTANCE hInstance)
+ATOM MyRegisterClass(HINSTANCE hInstance) noexcept
 {
     WNDCLASSEXW wcex{};
 
@@ -184,7 +186,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //        In dieser Funktion wird das Instanzenhandle in einer globalen Variablen gespeichert, und das
 //        Hauptprogrammfenster wird erstellt und angezeigt.
 //
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
+BOOL InitInstance(HINSTANCE hInstance, int nCmdShow, HWND& hWnd)
 {
    hInst = hInstance; // Instanzenhandle in der globalen Variablen speichern
 
@@ -248,7 +250,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_COMMAND:
         {
-            int wmId = LOWORD(wParam);
+            const int wmId = LOWORD(wParam);
             // Menüauswahl analysieren:
             switch (wmId)
             {
@@ -283,7 +285,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             OffsetRect(&intersectClientRect, -sourceRect.left, -sourceRect.top);
 
                 // The source DC is the entire screen, and the destination DC is the current window (HWND).
-                BOOL bitblt_result = BitBlt(hdc,
+                const BOOL bitblt_result = BitBlt(hdc,
                     intersectClientRect.left, intersectClientRect.top,
                     intersectClientRect.right, intersectClientRect.bottom,
                     hdcScreen,
@@ -309,7 +311,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 HRGN destRgn = CreateRectRgn(0, 0, 1, 1);
 
                 // we only have to fill a region if it is a COMPLEXREGION or a simple rect
-                int regionType = CombineRgn(destRgn, targetWindowRgn, clientRgn, RGN_XOR);
+                const int regionType = CombineRgn(destRgn, targetWindowRgn, clientRgn, RGN_XOR);
 
                 if ((regionType == SIMPLEREGION) || (regionType == COMPLEXREGION)) {
                     FillRgn(hdc, destRgn, (HBRUSH)GetStockObject(BLACK_BRUSH));
@@ -343,9 +345,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     const int y = cursor.ptScreenPos.y - sourceRect.top - info.yHotspot;
                     BITMAP bmpCursor = { 0 };
 
-                    int result = GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
+                    const int result = GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
                     if ( result == 0) {
-                        DWORD last_error = GetLastError();
+                        const DWORD last_error = GetLastError();
                         if (last_error != 0) {
                             // it seams to be 0 if cursor bitmap was already there - I do not know
                             LOG_IT(LOG_ERROR, "GetObject for Cursor bitmap failed with error: %s",
@@ -393,6 +395,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             ShowWindow(hWnd, SW_RESTORE);
             break;
         case WM_RBUTTONDOWN:
+        {
             // Show a simple menu on right click
             HMENU hMenu = CreatePopupMenu();
             AppendMenu(hMenu, MF_STRING, 2, L"About");
@@ -404,6 +407,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             DestroyMenu(hMenu);
             break;
         }
+        default: {} // nothing
+        }
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -412,7 +417,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 // Meldungshandler für Infofeld.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) noexcept
 {
     UNREFERENCED_PARAMETER(lParam);
    
@@ -433,6 +438,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
             return (INT_PTR)TRUE;
         }
         break;
+    default: {} // nothing
     }
     return (INT_PTR)FALSE;
 }
@@ -451,10 +457,10 @@ struct monitor_struct_typ {
 
 // detaching the monitor is not possible anymore!
 static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) {
-    UINT pathCount;
-    UINT modeCount;
+    UINT pathCount = 0;
+    UINT modeCount = 0;
     bool rokid_monitor_found = false;
-    LONG retValue = GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount);
+    const LONG retValue = GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount);
     if (retValue == 0) {
         std::vector<DISPLAYCONFIG_PATH_INFO> paths(pathCount);
         std::vector<DISPLAYCONFIG_MODE_INFO> modes(modeCount);
@@ -502,7 +508,7 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
                 sourceName.header.size = sizeof(DISPLAYCONFIG_SOURCE_DEVICE_NAME);
                 sourceName.header.adapterId = paths[i].targetInfo.adapterId;
                 sourceName.header.id = paths[i].sourceInfo.id;
-                if (DisplayConfigGetDeviceInfo((DISPLAYCONFIG_DEVICE_INFO_HEADER*)&sourceName))
+                if (DisplayConfigGetDeviceInfo(reinterpret_cast<DISPLAYCONFIG_DEVICE_INFO_HEADER*>( & sourceName)))
                     continue;
 
                 the_out += std::string("GDI Device Name       : '") + ws2s(sourceName.viewGdiDeviceName) + "'\n";
@@ -510,7 +516,7 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
                 // find the monitor with this device name
                 auto element = monitors.find(sourceName.viewGdiDeviceName);
                 if (element != monitors.end()) {
-                    the_out += std::string("Monitor Handle        : '") + std::to_string((unsigned long long)element->second.rokid_handle) + "'\n";
+                    the_out += std::string("Monitor Handle        : '") + std::to_string(reinterpret_cast<unsigned long long>(element->second.rokid_handle)) + "'\n";
 
                     LOG_IT(LOG_INFO, the_out.c_str());
 
@@ -563,26 +569,26 @@ void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, 
 
     // Get the position of the Rokid Max
     if (rokid_device.is_running()) {
-        static LONG collect_x_movement = 0;
-        static LONG collect_y_movement = 0;
+        static long collect_x_movement = 0;
+        static long collect_y_movement = 0;
         double gyro_x;
         double gyro_y;
         double gyro_z;
 
         rokid_device.get_gyro_angles_since_last_call(gyro_x, gyro_y, gyro_z);
 
-        LOG_IT(LOG_INFO, "x: %f, y %f, z %f", gyro_x, gyro_y, gyro_z);
+        // LOG_IT(LOG_INFO, "x: %f, y %f, z %f", gyro_x, gyro_y, gyro_z);
 
-        const LONG diff = 100000;
-        const LONG y_threshold = 100;
-        const LONG x_threshold = 50;
+        constexpr LONG diff = 100000;
+        constexpr LONG y_threshold = 100;
+        constexpr LONG x_threshold = 50;
 
-        collect_y_movement += (LONG)(gyro_y / diff);
-        collect_x_movement += (LONG)(gyro_x / diff);
+        collect_y_movement += static_cast<long>(gyro_y / diff);
+        collect_x_movement += static_cast<long>(gyro_x / diff);
 
         // if a specific amount of time is over and threshold not reached then delete collectors
         // This is done becase 3DOF tracking of Rokid Max also moves if glasses are not moved
-        uint64_t time_diff = os_monotonic_get_ns() - last_timestamp;
+        const uint64_t time_diff = os_monotonic_get_ns() - last_timestamp;
         if (time_diff > 1000000000 &&
             collect_y_movement <= y_threshold &&
             collect_x_movement <= x_threshold) {
@@ -592,8 +598,8 @@ void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, 
             collect_y_movement = 0;
         }
 
-        LONG x_size = sourceRect.right - sourceRect.left;
-        LONG y_size = sourceRect.bottom - sourceRect.top;
+        const long x_size = sourceRect.right - sourceRect.left;
+        const long y_size = sourceRect.bottom - sourceRect.top;
 
         // only move in 50 pixel steps
         if (abs(collect_y_movement) > y_threshold) {
@@ -700,8 +706,8 @@ bool InitializeRokidWindow(HWND hWnd) {
 
     // reset values for virtual screen
     SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-    unsigned int vScreenWidth = GetSystemMetricsForDpi(SM_CXVIRTUALSCREEN, 96 /* 100% scaling*/);
-    unsigned int vScreenHeight = GetSystemMetricsForDpi(SM_CYVIRTUALSCREEN, 96 /* 100% scaling*/);
+    const unsigned int vScreenWidth = GetSystemMetricsForDpi(SM_CXVIRTUALSCREEN, 96 /* 100% scaling*/);
+    const unsigned int vScreenHeight = GetSystemMetricsForDpi(SM_CYVIRTUALSCREEN, 96 /* 100% scaling*/);
 
     virtualScreenRectWithoutRokidMax.left = GetSystemMetricsForDpi(SM_XVIRTUALSCREEN, 96);
     virtualScreenRectWithoutRokidMax.top = GetSystemMetricsForDpi(SM_YVIRTUALSCREEN, 96);
@@ -758,7 +764,7 @@ bool InitializeRokidWindow(HWND hWnd) {
 }
 
 // Function to add taskbar icon
-void AddTaskbarIcon()
+void AddTaskbarIcon(HWND hWnd) noexcept
 {
     // Initialize NOTIFYICONDATA structure
     nid.cbSize = sizeof(NOTIFYICONDATA);
@@ -774,7 +780,7 @@ void AddTaskbarIcon()
 }
 
 // Function to remove taskbar icon
-void RemoveTaskbarIcon()
+void RemoveTaskbarIcon() noexcept
 {
     // Remove the icon
     Shell_NotifyIcon(NIM_DELETE, &nid);

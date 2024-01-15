@@ -17,7 +17,7 @@ class Rokid
 
 	std::mutex _mutex;
 
-	void rokid_usb_thread(std::atomic_bool& stop, std::atomic_bool& stopped);
+	void rokid_usb_thread( const std::atomic_bool& stop, std::atomic_bool& stopped);
 
 	std::thread _usb_thread; 
 
@@ -29,12 +29,12 @@ class Rokid
 	std::atomic_bool _stop;
 	std::atomic_bool _stopped;
 
-	void rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_LEN]);
+	void rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_LEN]) noexcept;
 
 	float _sensibility;
 
 public:
-	Rokid();
+	Rokid() noexcept;
 
 	~Rokid();
 
@@ -43,12 +43,12 @@ public:
 
 	bool stop();
 
-	bool is_running();
+	bool is_running() noexcept;
 
-	void get_gyro_angles_since_last_call(double &x, double& y, double& z);
+	void get_gyro_angles_since_last_call(double &x, double& y, double& z) noexcept;
 
-	void set_sensibility(const float& sensibility);
+	void set_sensibility(const float& sensibility) noexcept;
 
-	float get_sensibility();
+	float get_sensibility() noexcept;
 };
 

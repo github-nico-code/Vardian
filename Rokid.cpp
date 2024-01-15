@@ -4,12 +4,12 @@
 #include "helpers.h"
 #include <future>
 
-const int ROKID_USB_INTERFACE_NUM = 2;
-const int ROKID_INTERRUPT_IN_ENDPOINT = 0x82;
-const int ROKID_USB_TRANSFER_TIMEOUT_MS = 1000;
+constexpr int ROKID_USB_INTERFACE_NUM = 2;
+constexpr int ROKID_INTERRUPT_IN_ENDPOINT = 0x82;
+constexpr int ROKID_USB_TRANSFER_TIMEOUT_MS = 1000;
 
 
-Rokid::Rokid() : 
+Rokid::Rokid() noexcept: 
 	cummulated_gyro_x(0), 
 	cummulated_gyro_y(0), 
 	cummulated_gyro_z(0),
@@ -19,11 +19,11 @@ Rokid::Rokid() :
 {
 }
 
-void Rokid::set_sensibility(const float& sensibility) {
+void Rokid::set_sensibility(const float& sensibility) noexcept {
 	_sensibility = sensibility;
 }
 
-float Rokid::get_sensibility() {
+float Rokid::get_sensibility() noexcept {
 	return _sensibility;
 }
 
@@ -80,9 +80,9 @@ struct rokid_usb_pkt_sensor
 
 
 void
-Rokid::rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_LEN])
+Rokid::rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_LEN]) noexcept
 {
-	struct rokid_usb_packed_vec gyro_vect;
+	struct rokid_usb_packed_vec gyro_vect = {};
 
 	uint64_t timestamp = 0;
 	bool received = false;
@@ -91,7 +91,7 @@ Rokid::rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_L
 	case 4: {
 		// Old-style packet, where we get one packet for each sensor
 		// Order is usually the same, but not guaranteed, because packet losses.
-		struct rokid_usb_pkt_sensor* packet = (struct rokid_usb_pkt_sensor*)usb_buffer;
+		const struct rokid_usb_pkt_sensor* packet = (struct rokid_usb_pkt_sensor*)usb_buffer;
 		switch (packet->sensor_type) {
 		case 2: {
 			gyro_vect = packet->vector;
@@ -99,18 +99,22 @@ Rokid::rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_L
 			received = true;
 			break;
 		}
+		default: //ignore
+		{}
 		}
 		break;
 	}
 	case 17: {
 		// New-style combined packet
-		struct rokid_usb_pkt_combined* packet = reinterpret_cast<rokid_usb_pkt_combined*>( usb_buffer);
+		const struct rokid_usb_pkt_combined* packet = reinterpret_cast<rokid_usb_pkt_combined*>( usb_buffer);
 
 		gyro_vect = packet->gyro;
 		timestamp = packet->timestamp;
 		received = true;
 		break;
 	}
+	default: //ignore
+	{}
 	}
 
 	if (received) {
@@ -121,12 +125,12 @@ Rokid::rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_L
 			last_time = timestamp;
 		}
 		else {
-			uint64_t time_diff = timestamp - last_time;
+			const uint64_t time_diff = timestamp - last_time;
 			last_time = timestamp;
 
-			float actual_x = (trunc(gyro_vect.x * _sensibility) / _sensibility) *time_diff;
-			float actual_y = (trunc(gyro_vect.y * _sensibility) / _sensibility) *time_diff;
-			float actual_z = (trunc(gyro_vect.z * _sensibility) / _sensibility) *time_diff;
+			const float actual_x = (trunc(gyro_vect.x * _sensibility) / _sensibility) *time_diff;
+			const float actual_y = (trunc(gyro_vect.y * _sensibility) / _sensibility) *time_diff;
+			const float actual_z = (trunc(gyro_vect.z * _sensibility) / _sensibility) *time_diff;
 
 			//LOG_IT(LOG_INFO, "type: %i, x: %f, y %f, z %f", usb_buffer[0], actual_x, actual_y, actual_z);
 
@@ -139,7 +143,7 @@ Rokid::rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_L
 
 
 void
-Rokid::rokid_usb_thread(std::atomic_bool& stop, std::atomic_bool& stopped)
+Rokid::rokid_usb_thread( const std::atomic_bool& stop, std::atomic_bool& stopped)
 {
 	stopped = false;
 	bool ok = true;
@@ -157,7 +161,7 @@ Rokid::rokid_usb_thread(std::atomic_bool& stop, std::atomic_bool& stopped)
 		_mutex.unlock();
 
 		if (ok) {
-			BOOL readStatus = ReadFile(_usb_dev, usb_buffer, ROKID_USB_BUFFER_LEN, &read_length, NULL);
+			const BOOL readStatus = ReadFile(_usb_dev, usb_buffer, ROKID_USB_BUFFER_LEN, &read_length, NULL);
 
 			if (!readStatus)
 			{
@@ -188,14 +192,14 @@ WCHAR* getRokidDeviceString() {
 
 	static WCHAR deviceBuffer[500];
 
-	HDEVINFO hDevInfoSet;
+	HDEVINFO hDevInfoSet = {};
 	SP_DEVINFO_DATA devInfoData = {};
 	SP_DEVICE_INTERFACE_DATA devIfcData = {0};
-	PSP_DEVICE_INTERFACE_DETAIL_DATA devIfcDetailData;
+	PSP_DEVICE_INTERFACE_DETAIL_DATA devIfcDetailData = {};
 
-	DWORD dwMemberIdx = 0, dwSize, dwType;
+	DWORD dwMemberIdx = 0, dwSize = 0, dwType = 0;
 	GUID hidGuid;
-	PBYTE byteArrayBuffer;
+	PBYTE byteArrayBuffer = {};
 
 	HidD_GetHidGuid(&hidGuid);
 
@@ -291,7 +295,7 @@ Rokid::rokid_hmd_usb_init()
 {
 	_usb_dev = INVALID_HANDLE_VALUE;
 
-	WCHAR* deviceString = getRokidDeviceString();
+	const WCHAR* deviceString = getRokidDeviceString();
 
 	if (deviceString == NULL) {
 		LOG_IT(LOG_ERROR, "Failed to find Rokid Max");
@@ -308,7 +312,7 @@ Rokid::rokid_hmd_usb_init()
 
 	if (INVALID_HANDLE_VALUE == _usb_dev)
 	{
-		DWORD last_error = GetLastError();
+		const DWORD last_error = GetLastError();
 		LOG_IT(LOG_ERROR, "Failed to init HID: %s", getErrorCodeDescription(last_error));
 		return false;
 	}
@@ -374,11 +378,11 @@ bool Rokid::stop() {
 	return true;
 }
 
-bool Rokid::is_running() {
+bool Rokid::is_running() noexcept {
 	return !_stopped;
 }
 
-void Rokid::get_gyro_angles_since_last_call(double& x, double& y, double& z) {
+void Rokid::get_gyro_angles_since_last_call(double& x, double& y, double& z) noexcept {
 	x = cummulated_gyro_x;
 	y = cummulated_gyro_y;
 	z = cummulated_gyro_z;

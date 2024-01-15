@@ -4,15 +4,7 @@
 #include <string>
 #include <source_location>
 
-char* getErrorCodeDescription(long errorCode);
-
-#define SHOW_USED_MESSAGES 1
-
-std::wstring GetMessageText(unsigned int msg);
-
-#ifdef SHOW_USED_MESSAGES
-void ShowUsedMessages(void);
-#endif
+char* getErrorCodeDescription(long errorCode) noexcept;
 
 std::string ws2s(const wchar_t* pcs);
 

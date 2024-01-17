@@ -5,26 +5,32 @@
 #include <memory>
 #include <source_location>
 #include <iostream>
+#include <codecvt>
 //#include <stdafx.h>
 
-std::string ws2s(const wchar_t* pcs)
+std::string ws2s(const std::wstring& wstr)
 {
-
-    const size_t origsize = wcslen(pcs) + 1;
-    size_t convertedChars = 0;
-
-    const size_t new_size = origsize * 2;
-    // Create a unique_ptr to an array of 5 elements.
-    std::unique_ptr<char[]> new_string = std::make_unique<char[]>(new_size);
-
-    wcstombs_s(&convertedChars, new_string.get(), new_size, pcs, _TRUNCATE);
-
-    std::string return_value(new_string.get());
-
-    return return_value;
+    // Convert a Unicode string to an ASCII string
+    std::string strTo;
+    char* szTo = new char[wstr.length() + 1];
+    szTo[wstr.size()] = '\0';
+    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), -1, szTo, (int)wstr.length(), NULL, NULL);
+    strTo = szTo;
+    delete[] szTo;
+    return strTo;
 }
 
-
+std::wstring s2ws(const std::string& str)
+{
+    // Convert an ASCII string to a Unicode String
+    std::wstring wstrTo;
+    wchar_t* wszTo = new wchar_t[str.length() + 1];
+    wszTo[str.size()] = L'\0';
+    MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, wszTo, (int)str.length());
+    wstrTo = wszTo;
+    delete[] wszTo;
+    return wstrTo;
+}
 char* getErrorCodeDescription(long errorCode) noexcept
 {
 	static char MessageFromSystem[1024];

@@ -500,8 +500,8 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
 
                 std::string the_out;
 
-                the_out += std::string("Monitor Friendly Name : '") + ws2s( deviceName.monitorFriendlyDeviceName ) + "'\n";
-                the_out += std::string("Monitor Device Path   : '") + ws2s( deviceName.monitorDevicePath ) + "'\n";
+                the_out += std::string("Monitor Friendly Name : '") + ws2s( std::wstring( deviceName.monitorFriendlyDeviceName )) + "'\n";
+                the_out += std::string("Monitor Device Path   : '") + ws2s( std::wstring( deviceName.monitorDevicePath )) + "'\n";
 
                 DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName = {};
                 sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
@@ -511,7 +511,7 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
                 if (DisplayConfigGetDeviceInfo(reinterpret_cast<DISPLAYCONFIG_DEVICE_INFO_HEADER*>( & sourceName)))
                     continue;
 
-                the_out += std::string("GDI Device Name       : '") + ws2s(sourceName.viewGdiDeviceName) + "'\n";
+                the_out += std::string("GDI Device Name       : '") + ws2s(std::wstring( sourceName.viewGdiDeviceName )) + "'\n";
 
                 // find the monitor with this device name
                 auto element = monitors.find(sourceName.viewGdiDeviceName);
@@ -560,7 +560,7 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
 //
 // PURPOSE: Sets the source rectangle and updates the window. Called by a timer.
 //
-void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, DWORD /*dwTime*/)
+void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, DWORD /*dwTime*/) noexcept
 {
     // output dimensions at rokid max display
     static uint64_t last_timestamp = os_monotonic_get_ns();
@@ -773,7 +773,7 @@ void AddTaskbarIcon(HWND hWnd) noexcept
     nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.uCallbackMessage = WM_MYMESSAGE;
     nid.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_VARDIAN));
-    lstrcpy(nid.szTip, L"Right mouse click for menu.");
+    wcscpy_s(nid.szTip, L"Right mouse click for menu.");
 
     // Add the icon
     Shell_NotifyIcon(NIM_ADD, &nid);

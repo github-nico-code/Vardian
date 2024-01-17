@@ -6,8 +6,9 @@
 
 char* getErrorCodeDescription(long errorCode) noexcept;
 
-std::string ws2s(const wchar_t* pcs);
+std::wstring s2ws(const std::string& str);
 
+std::string ws2s(const std::wstring& wstr);
 
 enum log_level
 {

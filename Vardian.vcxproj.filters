@@ -55,7 +55,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
-    <None Include="vcpkg.json" />
     <None Include="docs\_config.yml">
       <Filter>Jenkyll-Site-Files</Filter>
     </None>

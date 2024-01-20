@@ -29,7 +29,7 @@ class Rokid
 	std::atomic_bool _stop;
 	std::atomic_bool _stopped;
 
-	void rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_LEN]) noexcept;
+	void rokid_fusion_parse_usb_packet(const std::vector<char>& usb_buffer) noexcept;
 
 	float _sensibility;
 
@@ -49,6 +49,6 @@ public:
 
 	void set_sensibility(const float& sensibility) noexcept;
 
-	float get_sensibility() noexcept;
+	float get_sensibility() const noexcept;
 };
 

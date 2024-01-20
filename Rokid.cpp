@@ -23,7 +23,7 @@ void Rokid::set_sensibility(const float& sensibility) noexcept {
 	_sensibility = sensibility;
 }
 
-float Rokid::get_sensibility() noexcept {
+float Rokid::get_sensibility() const noexcept {
 	return _sensibility;
 }
 
@@ -80,18 +80,18 @@ struct rokid_usb_pkt_sensor
 
 
 void
-Rokid::rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_LEN]) noexcept
+Rokid::rokid_fusion_parse_usb_packet(const std::vector<char>& usb_buffer) noexcept
 {
 	struct rokid_usb_packed_vec gyro_vect = {};
 
 	uint64_t timestamp = 0;
 	bool received = false;
 
-	switch (usb_buffer[0]) {
+	switch (usb_buffer.at(0)) {
 	case 4: {
 		// Old-style packet, where we get one packet for each sensor
 		// Order is usually the same, but not guaranteed, because packet losses.
-		const struct rokid_usb_pkt_sensor* packet = (struct rokid_usb_pkt_sensor*)usb_buffer;
+		const struct rokid_usb_pkt_sensor* packet = (struct rokid_usb_pkt_sensor*)usb_buffer.data();
 		switch (packet->sensor_type) {
 		case 2: {
 			gyro_vect = packet->vector;
@@ -106,7 +106,7 @@ Rokid::rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_L
 	}
 	case 17: {
 		// New-style combined packet
-		const struct rokid_usb_pkt_combined* packet = reinterpret_cast<rokid_usb_pkt_combined*>( usb_buffer);
+		const struct rokid_usb_pkt_combined* packet = (struct rokid_usb_pkt_combined*)usb_buffer.data();
 
 		gyro_vect = packet->gyro;
 		timestamp = packet->timestamp;
@@ -132,7 +132,7 @@ Rokid::rokid_fusion_parse_usb_packet(unsigned char usb_buffer[ROKID_USB_BUFFER_L
 			const float actual_y = (trunc(gyro_vect.y * _sensibility) / _sensibility) *time_diff;
 			const float actual_z = (trunc(gyro_vect.z * _sensibility) / _sensibility) *time_diff;
 
-			//LOG_IT(LOG_INFO, "type: %i, x: %f, y %f, z %f", usb_buffer[0], actual_x, actual_y, actual_z);
+			//LOG_IT(LOG_INFO, "type: {}, x: {}, y {}, z {}", usb_buffer[0], actual_x, actual_y, actual_z);
 
 			cummulated_gyro_x += actual_x;
 			cummulated_gyro_y += actual_y;
@@ -147,7 +147,7 @@ Rokid::rokid_usb_thread( const std::atomic_bool& stop, std::atomic_bool& stopped
 {
 	stopped = false;
 	bool ok = true;
-	unsigned char usb_buffer[ROKID_USB_BUFFER_LEN] = { 0 };
+	std::vector<char> usb_buffer(ROKID_USB_BUFFER_LEN);
 
 	_mutex.lock();
 	while (!stop && ok) {
@@ -161,7 +161,7 @@ Rokid::rokid_usb_thread( const std::atomic_bool& stop, std::atomic_bool& stopped
 		_mutex.unlock();
 
 		if (ok) {
-			const BOOL readStatus = ReadFile(_usb_dev, usb_buffer, ROKID_USB_BUFFER_LEN, &read_length, NULL);
+			const BOOL readStatus = ReadFile(_usb_dev, usb_buffer.data(), ROKID_USB_BUFFER_LEN, &read_length, NULL);
 
 			if (!readStatus)
 			{
@@ -198,20 +198,25 @@ WCHAR* getRokidDeviceString() {
 	PSP_DEVICE_INTERFACE_DETAIL_DATA devIfcDetailData = {};
 
 	DWORD dwMemberIdx = 0, dwSize = 0, dwType = 0;
-	GUID hidGuid;
-	PBYTE byteArrayBuffer = {};
+	GUID hidGuid = {};
 
 	HidD_GetHidGuid(&hidGuid);
 
-	LOG_IT(LOG_INFO, "HidGuid = {%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}\n",
+	LOG_IT(LOG_INFO, "HidGuid = {{{:08x}-{:04x}-{:04x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}}}\n",
 		hidGuid.Data1, hidGuid.Data2, hidGuid.Data3,
 		hidGuid.Data4[0], hidGuid.Data4[1], hidGuid.Data4[2], hidGuid.Data4[3],
 		hidGuid.Data4[4], hidGuid.Data4[5], hidGuid.Data4[6], hidGuid.Data4[7]);
 
+// TODO: figure out and use right format string
+//	LOG_IT(LOG_INFO, "HidGuid = {{{:08lX}-{:04hX}-{:04hX}-{:02hhX}{:02hhX}-{:02hhX}{:02hhX}{:02hhX}{:02hhX}{:02hhX}{:02hhX}}}\n",
+//		hidGuid.Data1, hidGuid.Data2, hidGuid.Data3,
+//		hidGuid.Data4[0], hidGuid.Data4[1], hidGuid.Data4[2], hidGuid.Data4[3],
+//		hidGuid.Data4[4], hidGuid.Data4[5], hidGuid.Data4[6], hidGuid.Data4[7]);
+
 	// Retrieve a list of all present USB devices with a device interface.
 	hDevInfoSet = SetupDiGetClassDevs(&hidGuid, NULL, 0, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
 
-	LOG_IT(LOG_INFO, "hDevInfoSet Handle: %lp\n", hDevInfoSet);
+	LOG_IT(LOG_INFO, "hDevInfoSet Handle: {}\n", hDevInfoSet);
 
 	if (hDevInfoSet != INVALID_HANDLE_VALUE) {
 
@@ -228,10 +233,11 @@ WCHAR* getRokidDeviceString() {
 			SetupDiGetDeviceRegistryProperty(hDevInfoSet, &devInfoData, SPDRP_HARDWAREID, &dwType, NULL, 0, &dwSize);
 
 			// Allocate required memory for byteArrayBuffer to hold device property.
-			byteArrayBuffer = (PBYTE)malloc(dwSize * sizeof(BYTE));
+			auto byteArrayBuffer = std::vector<BYTE>(dwSize);
+			// (PBYTE)malloc(dwSize * sizeof(BYTE));
 
 			// Get SPDRP_HARDWAREID device property
-			if (SetupDiGetDeviceRegistryProperty(hDevInfoSet, &devInfoData, SPDRP_HARDWAREID, &dwType, byteArrayBuffer, dwSize, NULL)) {
+			if (SetupDiGetDeviceRegistryProperty(hDevInfoSet, &devInfoData, SPDRP_HARDWAREID, &dwType, byteArrayBuffer.data(), dwSize, NULL)) {
 
 				// VID and PID from Rokid Max
 				// #define ROKID_VID 0x04d2
@@ -239,13 +245,13 @@ WCHAR* getRokidDeviceString() {
 				const wchar_t* vid = L"VID_04D2";
 				const wchar_t* pid = L"PID_162F";
 
-				const wchar_t* bufferAsChar = (wchar_t*)byteArrayBuffer;
+				const wchar_t* bufferAsChar = (wchar_t*)byteArrayBuffer.data();
 
-				LOG_IT(LOG_INFO, "byteArrayBuffer (%i): %s\n", lstrlen(bufferAsChar), ws2s(bufferAsChar).c_str());
+				LOG_IT(LOG_INFO, "byteArrayBuffer ({}): {}\n", lstrlen(bufferAsChar), ws2s(bufferAsChar).c_str());
 
 				// Test for VID/PID
 				if (bufferAsChar != NULL && wcsstr(bufferAsChar, pid) && wcsstr(bufferAsChar, vid)) {
-					LOG_IT(LOG_INFO, "Found at dwMemberIdx: %i\n", dwMemberIdx);
+					LOG_IT(LOG_INFO, "Found at dwMemberIdx: {}\n", dwMemberIdx);
 
 					devIfcData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
 					SetupDiEnumDeviceInterfaces(hDevInfoSet, NULL, &hidGuid, dwMemberIdx, &devIfcData);
@@ -261,7 +267,7 @@ WCHAR* getRokidDeviceString() {
 
 						// Get devIfcDetailData
 						SetupDiGetDeviceInterfaceDetail(hDevInfoSet, &devIfcData, devIfcDetailData, dwSize, &dwSize, NULL);
-						LOG_IT(LOG_INFO, "DevicePath: %s\n", ws2s(devIfcDetailData->DevicePath));
+						LOG_IT(LOG_INFO, "DevicePath: {}\n", ws2s(devIfcDetailData->DevicePath));
 						lstrcpy(deviceBuffer, devIfcDetailData->DevicePath);
 						device_string = deviceBuffer;
 
@@ -273,9 +279,6 @@ WCHAR* getRokidDeviceString() {
 					}
 				}
 			}
-
-			// Release byteArrayBuffer memory
-			free(byteArrayBuffer);
 
 			dwMemberIdx++;
 		}
@@ -313,7 +316,7 @@ Rokid::rokid_hmd_usb_init()
 	if (INVALID_HANDLE_VALUE == _usb_dev)
 	{
 		const DWORD last_error = GetLastError();
-		LOG_IT(LOG_ERROR, "Failed to init HID: %s", getErrorCodeDescription(last_error));
+		LOG_IT(LOG_ERROR, "Failed to init HID: {}", getErrorCodeDescription(last_error));
 		return false;
 	}
 

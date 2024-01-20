@@ -3,8 +3,9 @@
 #include <Windows.h>
 #include <string>
 #include <source_location>
+#include <format>
 
-char* getErrorCodeDescription(long errorCode) noexcept;
+std::string getErrorCodeDescription(long errorCode);
 
 std::wstring s2ws(const std::string& str);
 
@@ -20,10 +21,15 @@ enum log_level
 
 #define LOG_IT(...) \
 	do { \
-		log_it(__FUNCTION__, __VA_ARGS__); \
+		log_it_new(std::source_location::current(), __VA_ARGS__); \
 	} while (false)
 
+template<typename... Args>
+void log_it_new(std::source_location location, enum log_level level, const std::string_view& print_format, Args... the_args)
+{
+	std::string the_output = std::string("## LEVEL=") + std::to_string(level) +
+		std::string(", function='") + location.function_name() + "' ==> " + 
+		std::vformat(print_format, std::make_format_args(the_args...)) + "\n";
 
-void
-log_it(const char* function, enum log_level level, const char* format, ...);
-
+	OutputDebugStringA(the_output.c_str());
+}

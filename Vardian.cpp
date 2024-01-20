@@ -20,14 +20,15 @@
 
 #define WM_MYMESSAGE (WM_USER + 100)
 
-// TODO: Change function because it is not freely usable
 //! Helper define to make code more readable.
 #define U_1_000_000_000 (1000 * 1000 * 1000)
 
-
-static inline int64_t
-os_ns_per_qpc_tick_get(void) noexcept
+static inline uint64_t
+get_ns(void) noexcept
 {
+    LARGE_INTEGER qpc;
+    QueryPerformanceCounter(&qpc);
+
     static int64_t ns_per_qpc_tick = 0;
     if (ns_per_qpc_tick == 0) {
         // Fixed at startup, so we can cache this.
@@ -35,16 +36,8 @@ os_ns_per_qpc_tick_get(void) noexcept
         QueryPerformanceFrequency(&freq);
         ns_per_qpc_tick = U_1_000_000_000 / freq.QuadPart;
     }
-    return ns_per_qpc_tick;
-}
 
-
-static inline uint64_t
-os_monotonic_get_ns(void) noexcept
-{
-    LARGE_INTEGER qpc;
-    QueryPerformanceCounter(&qpc);
-    return qpc.QuadPart * os_ns_per_qpc_tick_get();
+    return qpc.QuadPart * ns_per_qpc_tick;
 }
 
 
@@ -481,7 +474,7 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
                     tempMonitor.bottom = mi.rcMonitor.bottom;
                     tempMonitor.found = false;
 
-                    auto monitors = (std::unordered_map<std::wstring, struct monitor_struct_typ>*)lp;
+                    auto monitors = reinterpret_cast<std::unordered_map<std::wstring, struct monitor_struct_typ>*>(lp);
                     monitors->insert(std::pair<std::wstring, struct monitor_struct_typ>(mi.szDevice, tempMonitor));
 
                     return TRUE;
@@ -563,7 +556,7 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
 void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, DWORD /*dwTime*/) noexcept
 {
     // output dimensions at rokid max display
-    static uint64_t last_timestamp = os_monotonic_get_ns();
+    static uint64_t last_timestamp = get_ns();
 
     std::wstring the_out;
 
@@ -588,12 +581,12 @@ void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, 
 
         // if a specific amount of time is over and threshold not reached then delete collectors
         // This is done becase 3DOF tracking of Rokid Max also moves if glasses are not moved
-        const uint64_t time_diff = os_monotonic_get_ns() - last_timestamp;
+        const uint64_t time_diff = get_ns() - last_timestamp;
         if (time_diff > 1000000000 &&
             collect_y_movement <= y_threshold &&
             collect_x_movement <= x_threshold) {
             // reset timestamp
-            last_timestamp = os_monotonic_get_ns();
+            last_timestamp = get_ns();
             collect_x_movement = 0;
             collect_y_movement = 0;
         }

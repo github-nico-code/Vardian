@@ -6,17 +6,16 @@
 #include <source_location>
 #include <iostream>
 #include <codecvt>
-//#include <stdafx.h>
+#include <vector>
 
 std::string ws2s(const std::wstring& wstr)
 {
     // Convert a Unicode string to an ASCII string
     std::string strTo;
-    char* szTo = new char[wstr.length() + 1];
-    szTo[wstr.size()] = '\0';
-    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), -1, szTo, (int)wstr.length(), NULL, NULL);
-    strTo = szTo;
-    delete[] szTo;
+    auto szTo = std::vector<char>(wstr.length() + 1);
+    szTo.at(wstr.size()) = '\0';
+    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), -1, szTo.data(), wstr.length(), NULL, NULL);
+    strTo = szTo.data();
     return strTo;
 }
 
@@ -24,62 +23,30 @@ std::wstring s2ws(const std::string& str)
 {
     // Convert an ASCII string to a Unicode String
     std::wstring wstrTo;
-    wchar_t* wszTo = new wchar_t[str.length() + 1];
-    wszTo[str.size()] = L'\0';
-    MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, wszTo, (int)str.length());
-    wstrTo = wszTo;
-    delete[] wszTo;
+    auto wszTo = std::vector<wchar_t>(str.length() + 1);
+    wszTo.at(str.size()) = L'\0';
+    MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, wszTo.data(), str.length());
+    wstrTo = wszTo.data();
     return wstrTo;
 }
-char* getErrorCodeDescription(long errorCode) noexcept
+
+std::string getErrorCodeDescription(long errorCode)
 {
-	static char MessageFromSystem[1024];
-	static char ReturnMessage[2000];
+	auto MessageFromSystem = std::vector<char>(1024);
+	std::string ReturnMessage;
 	const DWORD messageReceived = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM,
 		0,
 		errorCode,
 		1033,                          // US English
-		MessageFromSystem,
+		MessageFromSystem.data(),
 		1024,
 		0);
 
-	if (!messageReceived)
-		sprintf_s(ReturnMessage, 2000, "Error code: %i", errorCode);
+    if (!messageReceived)
+        ReturnMessage = std::string("Error code: ") + std::to_string(errorCode);
 	else
-		sprintf_s(ReturnMessage, 2000, "Error code '%i' with message: '%s'", errorCode, MessageFromSystem);
+        ReturnMessage = std::string("Error code: '") + std::to_string(errorCode) +
+            std::to_string(errorCode) + "' with message: " + MessageFromSystem.data();
 
 	return ReturnMessage;
-}
-
-void log(std::string_view message,
-    std::source_location location = std::source_location::current()
-) {
-    std::cout << "info:"
-        << location.file_name() << ":"
-        << location.line() << ":"
-        << location.function_name() << " "
-        << message << '\n';
-}
-
-
-void
-log_it(const char* function, enum log_level level, const char* format, ...)
-{
-    va_list args;
-
-    std::string the_output = std::string( "LEVEL=" ) + std::to_string( level ) + 
-        std::string( ", function='" ) + std::string(function) + "' ==> ";
-
-    va_start(args, format);
-    const int len = _vscprintf(format, args) + 1;
-    char* buffer = (char*)malloc(len * sizeof(char));
-    if (NULL != buffer)
-    {
-        vsprintf_s(buffer, len, format, args);
-        the_output += buffer + std::string("\n");
-        free(buffer);
-    }
-    va_end(args);
-
-    OutputDebugStringA(the_output.c_str());
 }

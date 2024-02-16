@@ -33,3 +33,6 @@ void log_it_new(std::source_location location, enum log_level level, const std::
 
 	OutputDebugStringA(the_output.c_str());
 }
+
+void ReplaceStringInPlace(std::string& subject, const std::string& search,
+	const std::string& replace);

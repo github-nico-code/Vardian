@@ -14,6 +14,7 @@
 #include <shellapi.h>
 #include "helpers.h"
 #include "Rokid.h"
+#include <regex>
 //#include <os/os_time.h>
 
 #define MAX_LOADSTRING 100
@@ -510,6 +511,9 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
                 auto element = monitors.find(sourceName.viewGdiDeviceName);
                 if (element != monitors.end()) {
                     the_out += std::string("Monitor Handle        : '") + std::to_string(reinterpret_cast<unsigned long long>(element->second.rokid_handle)) + "'\n";
+
+                    ReplaceStringInPlace(the_out, "{", "{{");
+                    ReplaceStringInPlace(the_out, "}", "}}");
 
                     LOG_IT(LOG_INFO, the_out.c_str());
 

@@ -5,13 +5,16 @@ layout: default
 
 # Introduction
 
-This software is still in alpha status.
-
 Vardian is a program to use the Rokid Max device to look at a multi monitor setup 
 for Windows PCs. It uses the 3DOF functionality to navigate
 a Window opened at the Rokid Max screen about the virtual windows
 monitors. For correct functionality, the Rokid Max has to be connected to the
 Windows PC via USB C.
+
+If you are looking for a more feature rich solution with software emulated virtual screens
+you sould take a look at Ginger XR (https://gogingerxr.com/). It is more feature rich. But
+it needs admin rights. For Vardian, no admin rights are needed. Just install as user and
+use with user rights.
 
 # Releases
 

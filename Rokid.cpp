@@ -3,6 +3,7 @@
 #include <hidsdi.h>
 #include "helpers.h"
 #include <future>
+#include "easylogging++.h"
 
 constexpr int ROKID_USB_INTERFACE_NUM = 2;
 constexpr int ROKID_INTERRUPT_IN_ENDPOINT = 0x82;
@@ -179,10 +180,10 @@ Rokid::rokid_usb_thread( const std::atomic_bool& stop, std::atomic_bool& stopped
 	}
 	_mutex.unlock();
 	if (ok) {
-		LOG_IT(LOG_INFO, "Usb thread exiting normally");
+		LOG(INFO) << std::format("Usb thread exiting normally");
 	}
 	else {
-		LOG_IT(LOG_ERROR, "Exiting on libusb error");
+		LOG(ERROR) << std::format("Exiting on libusb error");
 	}
 	stopped = true;
 }
@@ -202,7 +203,7 @@ WCHAR* getRokidDeviceString() {
 
 	HidD_GetHidGuid(&hidGuid);
 
-	LOG_IT(LOG_INFO, "HidGuid = {{{:08x}-{:04x}-{:04x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}}}\n",
+	LOG(INFO) << std::format("HidGuid = {{{:08x}-{:04x}-{:04x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}}}\n",
 		hidGuid.Data1, hidGuid.Data2, hidGuid.Data3,
 		hidGuid.Data4[0], hidGuid.Data4[1], hidGuid.Data4[2], hidGuid.Data4[3],
 		hidGuid.Data4[4], hidGuid.Data4[5], hidGuid.Data4[6], hidGuid.Data4[7]);
@@ -216,7 +217,7 @@ WCHAR* getRokidDeviceString() {
 	// Retrieve a list of all present USB devices with a device interface.
 	hDevInfoSet = SetupDiGetClassDevs(&hidGuid, NULL, 0, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
 
-	LOG_IT(LOG_INFO, "hDevInfoSet Handle: {}\n", hDevInfoSet);
+	LOG(INFO) << std::format("hDevInfoSet Handle: {}\n", hDevInfoSet);
 
 	if (hDevInfoSet != INVALID_HANDLE_VALUE) {
 
@@ -247,11 +248,11 @@ WCHAR* getRokidDeviceString() {
 
 				const wchar_t* bufferAsChar = (wchar_t*)byteArrayBuffer.data();
 
-				LOG_IT(LOG_INFO, "byteArrayBuffer ({}): {}\n", lstrlen(bufferAsChar), ws2s(bufferAsChar).c_str());
+				LOG(INFO) << std::format("byteArrayBuffer ({}): {}\n", lstrlen(bufferAsChar), ws2s(bufferAsChar).c_str());
 
 				// Test for VID/PID
 				if (bufferAsChar != NULL && wcsstr(bufferAsChar, pid) && wcsstr(bufferAsChar, vid)) {
-					LOG_IT(LOG_INFO, "Found at dwMemberIdx: {}\n", dwMemberIdx);
+					LOG(INFO) << std::format("Found at dwMemberIdx: {}\n", dwMemberIdx);
 
 					devIfcData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
 					SetupDiEnumDeviceInterfaces(hDevInfoSet, NULL, &hidGuid, dwMemberIdx, &devIfcData);
@@ -267,7 +268,7 @@ WCHAR* getRokidDeviceString() {
 
 						// Get devIfcDetailData
 						SetupDiGetDeviceInterfaceDetail(hDevInfoSet, &devIfcData, devIfcDetailData, dwSize, &dwSize, NULL);
-						LOG_IT(LOG_INFO, "DevicePath: {}\n", ws2s(devIfcDetailData->DevicePath));
+						LOG(INFO) << std::format("DevicePath: {}\n", ws2s(devIfcDetailData->DevicePath));
 						lstrcpy(deviceBuffer, devIfcDetailData->DevicePath);
 						device_string = deviceBuffer;
 
@@ -285,7 +286,7 @@ WCHAR* getRokidDeviceString() {
 
 	}
 	else {
-		LOG_IT(LOG_ERROR, "devInfo == INVALID_HANDLE_VALUE\n");
+		LOG(ERROR) << std::format("devInfo == INVALID_HANDLE_VALUE\n");
 	}
 
 	SetupDiDestroyDeviceInfoList(hDevInfoSet);
@@ -301,7 +302,7 @@ Rokid::rokid_hmd_usb_init()
 	const WCHAR* deviceString = getRokidDeviceString();
 
 	if (deviceString == NULL) {
-		LOG_IT(LOG_ERROR, "Failed to find Rokid Max");
+		LOG(ERROR) << std::format("Failed to find Rokid Max");
 		return false;
 	}
 
@@ -316,7 +317,7 @@ Rokid::rokid_hmd_usb_init()
 	if (INVALID_HANDLE_VALUE == _usb_dev)
 	{
 		const DWORD last_error = GetLastError();
-		LOG_IT(LOG_ERROR, "Failed to init HID: {}", getErrorCodeDescription(last_error));
+		LOG(ERROR) << std::format("Failed to init HID: {}", getErrorCodeDescription(last_error));
 		return false;
 	}
 
@@ -348,7 +349,7 @@ Rokid::rokid_hmd_usb_init()
 
 
 bool Rokid::start() {
-	LOG_IT(LOG_INFO, "Starting Rokid driver instance");
+	LOG(INFO) << std::format("Starting Rokid driver instance");
 
 	// This also sets base.str used below.
 	if (!rokid_hmd_usb_init()) {
@@ -361,7 +362,7 @@ bool Rokid::start() {
 		_usb_thread = std::thread(&Rokid::rokid_usb_thread, this, std::ref(_stop), std::ref(_stopped)); //Create the thread and store its reference
 	}
 
-	LOG_IT(LOG_INFO, "Started Rokid driver instance");
+	LOG(INFO) << std::format("Started Rokid driver instance");
 
 	return true;
 }

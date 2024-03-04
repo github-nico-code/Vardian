@@ -39,6 +39,9 @@
     <ClInclude Include="Vardian.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="easylogging++.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Vardian.rc">
@@ -80,6 +83,9 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="Vardian.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="easylogging++.cc">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

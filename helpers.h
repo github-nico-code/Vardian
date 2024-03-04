@@ -18,7 +18,7 @@ enum log_level
 	LOG_ERROR
 };
 
-
+/*
 #define LOG_IT(...) \
 	do { \
 		log_it_new(std::source_location::current(), __VA_ARGS__); \
@@ -31,8 +31,8 @@ void log_it_new(std::source_location location, enum log_level level, const std::
 		std::string(", function='") + location.function_name() + "' ==> " + 
 		std::vformat(print_format, std::make_format_args(the_args...)) + "\n";
 
-	OutputDebugStringA(the_output.c_str());
+	logString(the_output);
 }
-
+*/
 void ReplaceStringInPlace(std::string& subject, const std::string& search,
 	const std::string& replace);

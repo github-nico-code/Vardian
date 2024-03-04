@@ -15,7 +15,9 @@
 #include "helpers.h"
 #include "Rokid.h"
 #include <regex>
-//#include <os/os_time.h>
+#include "easylogging++.h"
+
+INITIALIZE_EASYLOGGINGPP
 
 #define MAX_LOADSTRING 100
 
@@ -81,13 +83,24 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     GetModuleFileName(NULL, my_filename, MAX_PATH);
 
     std::wstring my_filename_str(my_filename);
-    FILE* new_stdout;
-    FILE* new_stderr;
-    _wfreopen_s(&new_stdout, (my_filename_str + L".out.log" ).c_str(), L"w", stdout);
-    _wfreopen_s(&new_stderr, (my_filename_str + L".err.log").c_str(), L"w", stderr);
+    my_filename_str += L".err.log";
+
+    el::Configurations defaultConf;
+    defaultConf.setToDefault();
+    // Values are always std::string
+    defaultConf.set(el::Level::Global,
+        el::ConfigurationType::Format, "%datetime %fbase %func %level >> %msg");
+    defaultConf.set(el::Level::Global, el::ConfigurationType::ToFile, "true");
+    defaultConf.set(el::Level::Global, el::ConfigurationType::ToStandardOutput, "true");
+    defaultConf.set(el::Level::Global, el::ConfigurationType::Filename, ws2s(my_filename_str) );
+    defaultConf.set(el::Level::Global, el::ConfigurationType::MaxLogFileSize, "2097152");
+
+    // default logger uses default configurations
+    el::Loggers::reconfigureLogger("default", defaultConf);
+
 
     // TODO: Hier Code einfügen.
-    LOG_IT(LOG_INFO, "Start Vardian");
+    LOG(INFO) << "Start Vardian";
 
     // Globale Zeichenfolgen initialisieren
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -130,14 +143,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return FALSE;
     }
 
-    LOG_IT(LOG_INFO, "Finish Vardian");
-
-    if (new_stdout != NULL) {
-        fclose(new_stdout);
-    }
-    if (new_stderr != NULL) {
-        fclose(new_stderr);
-    }
+    LOG(INFO) << "Finish Vardian";
 
     return (int) msg.wParam;
 }
@@ -196,7 +202,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow, HWND& hWnd)
 
    if (!hWnd)
    {
-       LOG_IT(LOG_ERROR, "Could not create main window.");
+       LOG(ERROR) << "Could not create main window.";
        return FALSE;
    }
 
@@ -297,7 +303,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         ", " + std::to_string(ps.rcPaint.top) +
                         ", " + std::to_string(ps.rcPaint.right - ps.rcPaint.left) + " x " + std::to_string(ps.rcPaint.bottom - ps.rcPaint.top) +
                         ", GetLastError: " + getErrorCodeDescription(GetLastError());
-                    LOG_IT(LOG_ERROR, the_out.c_str());
+                    LOG(ERROR) << the_out.c_str();
                 }
 
                 HRGN clientRgn = CreateRectRgnIndirect(&intersectClientRect);
@@ -324,14 +330,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
                 CURSORINFO cursor = { sizeof(cursor) };
                 if (GetCursorInfo(&cursor) == NULL) {
-                    LOG_IT(LOG_ERROR, "GetCursorInfo failed with error: %s", 
+                    LOG(ERROR) << std::format("GetCursorInfo failed with error: %s",
                         getErrorCodeDescription(GetLastError()));
                 }
                 
                 if (cursor.flags == CURSOR_SHOWING) {
                     ICONINFO info = { sizeof(info) };
                     if (GetIconInfo(cursor.hCursor, &info) == NULL) {
-                        LOG_IT(LOG_ERROR, "GetIconInfo failed with error: %s",
+                        LOG(ERROR) << std::format("GetIconInfo failed with error: %s",
                             getErrorCodeDescription(GetLastError()));
                     }
 
@@ -344,14 +350,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         const DWORD last_error = GetLastError();
                         if (last_error != 0) {
                             // it seams to be 0 if cursor bitmap was already there - I do not know
-                            LOG_IT(LOG_ERROR, "GetObject for Cursor bitmap failed with error: %s",
+                            LOG(ERROR) << std::format("GetObject for Cursor bitmap failed with error: %s",
                                 getErrorCodeDescription(GetLastError()));
                         }
                     }
                     if (DrawIconEx(hdc, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
                         0, NULL, DI_NORMAL) == 0)
                     {
-                        LOG_IT(LOG_ERROR, "DrawIconEx failed with error: %s",
+                        LOG(ERROR) << std::format("DrawIconEx failed with error: %s",
                             getErrorCodeDescription(GetLastError()));
                     }
                     DeleteObject(info.hbmColor);
@@ -512,11 +518,7 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
                 if (element != monitors.end()) {
                     the_out += std::string("Monitor Handle        : '") + std::to_string(reinterpret_cast<unsigned long long>(element->second.rokid_handle)) + "'\n";
 
-                    ReplaceStringInPlace(the_out, "{", "{{");
-                    ReplaceStringInPlace(the_out, "}", "}}");
-
-                    LOG_IT(LOG_INFO, the_out.c_str());
-
+                    LOG(INFO) << the_out.c_str();
 
                     if (std::wstring(deviceName.monitorFriendlyDeviceName) == std::wstring(L"Rokid Max")) {
                         monitor_struct = element->second;
@@ -654,7 +656,7 @@ bool InitializeRokidWindow(HWND hWnd) {
         }
 
         if (ReleaseDC(NULL, hdcScreen) != 1) {
-            LOG_IT(LOG_ERROR, "ReleaseDC failed with error: ", getErrorCodeDescription(GetLastError()));
+            LOG(ERROR) << std::format("ReleaseDC failed with error: ", getErrorCodeDescription(GetLastError()));
         }
 
         hdcScreen = NULL;
@@ -667,10 +669,10 @@ bool InitializeRokidWindow(HWND hWnd) {
     }
 
     if (rokid_device.start()) {
-        LOG_IT(LOG_INFO, "Rokid Max USB device found.");
+        LOG(INFO) << "Rokid Max USB device found.";
     }
     else {
-        LOG_IT(LOG_ERROR, "Did not find Rokid Max.");
+        LOG(ERROR) << "Did not find Rokid Max.";
         return false;
     }
 
@@ -679,19 +681,19 @@ bool InitializeRokidWindow(HWND hWnd) {
 
     // find Rokid Max and move Rokid Max monitor to most right
     if (get_rokid_monitor_handle(monitor_struct) == false) {
-        LOG_IT(LOG_ERROR, "Could not find Rokid Max Monitor handle.");
+        LOG(ERROR) << "Could not find Rokid Max Monitor handle.";
         return false;
     }
 
-    LOG_IT(LOG_INFO, "Rokid Max Monitor handle found.");
+    LOG(INFO) << "Rokid Max Monitor handle found.";
 
     // call update window after creating window and maybe rokid handles
     if (UpdateWindow(hWnd) == false) {
-        LOG_IT(LOG_ERROR, "'UpdateWindow' failed.");
+        LOG(ERROR) << "'UpdateWindow' failed.";
         return false;
     }
 
-    LOG_IT(LOG_INFO, "'UpdateWindow' successful.");
+    LOG(INFO) << "'UpdateWindow' successful.";
 
     ShowWindow(hWnd, SW_SHOWNORMAL);
 
@@ -716,7 +718,7 @@ bool InitializeRokidWindow(HWND hWnd) {
         ", " + std::to_string(virtualScreenRectWithoutRokidMax.top) +
         ", " + std::to_string(virtualScreenRectWithoutRokidMax.right - virtualScreenRectWithoutRokidMax.left) +
         " x " + std::to_string(virtualScreenRectWithoutRokidMax.bottom - virtualScreenRectWithoutRokidMax.top);
-    LOG_IT(LOG_INFO, the_out.c_str());
+    LOG(INFO) << the_out.c_str();
 
     // prevent Window from being copied
     SetWindowDisplayAffinity(hWnd, WDA_EXCLUDEFROMCAPTURE);
@@ -727,13 +729,13 @@ bool InitializeRokidWindow(HWND hWnd) {
         monitor_struct.DevMode.dmPelsHeight,
         SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOACTIVATE) == 0)
     {
-        LOG_IT(LOG_ERROR, "Could not SetWindowPos to pos (%i,%i) with size (%i, %i).",
+        LOG(ERROR) << std::format("Could not SetWindowPos to pos (%i,%i) with size (%i, %i).",
             monitor_struct.DevMode.dmPosition.x, monitor_struct.DevMode.dmPosition.y,
             monitor_struct.DevMode.dmPelsWidth, monitor_struct.DevMode.dmPelsHeight);
         return false;
     }
 
-    LOG_IT(LOG_INFO, "SetWindowPos to pos (%i,%i) with size (%i, %i).",
+    LOG(INFO) << std::format("SetWindowPos to pos (%i,%i) with size (%i, %i).",
         monitor_struct.DevMode.dmPosition.x, monitor_struct.DevMode.dmPosition.y,
         monitor_struct.DevMode.dmPelsWidth, monitor_struct.DevMode.dmPelsHeight);
 
@@ -742,16 +744,16 @@ bool InitializeRokidWindow(HWND hWnd) {
 
     if (timerId == NULL) {
         // timer creation failed
-        LOG_IT(LOG_ERROR, "Timer creation failed with Erro: %s", getErrorCodeDescription(GetLastError()));
+        LOG(ERROR) << std::format("Timer creation failed with Erro: %s", getErrorCodeDescription(GetLastError()));
         return false;
     }
 
-    LOG_IT(LOG_INFO, "Timer started.");
+    LOG(INFO) << "Timer started.";
 
     hdcScreen = GetDC(NULL);
 
     if (hdcScreen == NULL) {
-        LOG_IT(LOG_ERROR, "GetDC failed.");
+        LOG(ERROR) << "GetDC failed.";
         return false;
     }
 

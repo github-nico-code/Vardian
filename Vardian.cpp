@@ -278,7 +278,7 @@ bool Intersects(const POINT& p0, const POINT& p1, const POINT& p2, const POINT& 
         return true;
 }
 
-bool Intersects_Once(const POINT& a1, const POINT& a2, const RECT& rect, POINT& result, RECT& intersectionResult) {
+bool Intersects_Once(const POINT& a1, const POINT& a2, const RECT& rect, POINT& result, bool& resultTop, bool& resultBottom, bool& resultLeft, bool& resultRight ) {
     POINT left_top = { rect.left, rect.top };
     POINT left_bottom = { rect.left, rect.bottom };
     POINT right_top = { rect.right, rect.top };
@@ -286,11 +286,11 @@ bool Intersects_Once(const POINT& a1, const POINT& a2, const RECT& rect, POINT& 
 
 
     // test all four edges of the rectangle
-    intersectionResult.left = Intersects(a1, a2, left_top, left_bottom, result);
-    intersectionResult.bottom = Intersects(a1, a2, left_bottom, right_bottom, result);
-    intersectionResult.right = Intersects(a1, a2, right_bottom, right_top, result);
-    intersectionResult.top = Intersects(a1, a2, right_top, left_top, result);
-    if (intersectionResult.top == true xor intersectionResult.bottom == true xor intersectionResult.left == true xor intersectionResult.right == true ) {
+    resultLeft = Intersects(a1, a2, left_top, left_bottom, result);
+    resultBottom = Intersects(a1, a2, left_bottom, right_bottom, result);
+    resultRight = Intersects(a1, a2, right_bottom, right_top, result);
+    resultTop = Intersects(a1, a2, right_top, left_top, result);
+    if (resultTop xor resultBottom xor resultLeft xor resultRight ) {
         return true;
     }
     else {
@@ -501,11 +501,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         mousePoint.y = cursor.ptScreenPos.y - info.yHotspot;
 
                         POINT intersectionPoint;
-                        RECT intersectionResult = { 0,0,0,0 };
+                        bool resultTop = false;
+                        bool resultBottom = false;
+                        bool resultLeft = false;
+                        bool resultRight = false;
 
-                        if (Intersects_Once(middlePoint, mousePoint, intersectSource, intersectionPoint, intersectionResult)) {
-                            LONG imagepos_x = intersectionPoint.x - sourceRect.left;
-                            LONG imagepos_y = intersectionPoint.y - sourceRect.top;
+                        if (Intersects_Once(middlePoint, mousePoint, intersectSource, intersectionPoint, resultTop, resultBottom, resultLeft, resultRight )) {
+                            const LONG imagepos_x = intersectionPoint.x - sourceRect.left;
+                            const LONG imagepos_y = intersectionPoint.y - sourceRect.top;
                             LONG mult_iconsize_x = 0;
                             LONG mult_iconsize_y = 0;
 
@@ -513,26 +516,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
                             // found one intersection point and intersected rectangle side
-                            if (intersectionResult.left == true) {
+                            if (resultLeft) {
                                 icon_resource_string = MAKEINTRESOURCE(IDI_ISLEFT);
                                 mult_iconsize_x = 1; // upper left corner from icon is the size of the icon away from left border
                                 mult_iconsize_y = 0;
-                            } else if (intersectionResult.right == true) {
+                            } else if (resultRight) {
                                 icon_resource_string = MAKEINTRESOURCE(IDI_ISRIGHT);
                                 mult_iconsize_x = -2; // upper left corner from icon is double the size of the icon away from right border
                                 mult_iconsize_y = 0;
-                            } else if (intersectionResult.top == true) {
+                            } else if (resultTop) {
                                 icon_resource_string = MAKEINTRESOURCE(IDI_ISTOP);
                                 mult_iconsize_x = 0; // upper left corner from icon is double the size of the icon away from right border
                                 mult_iconsize_y = 1;
-                            } else if (intersectionResult.bottom == true) {
+                            } else if (resultBottom) {
                                 icon_resource_string = MAKEINTRESOURCE(IDI_ISBOTTOM);
                                 mult_iconsize_x = 0; // upper left corner from icon is double the size of the icon away from right border
                                 mult_iconsize_y = -2;
                             }
 
                             HICON new_icon = LoadIcon(hInst, icon_resource_string);
-                            MYICON_INFO icon_info = MyGetIconInfo(new_icon);
+                            const MYICON_INFO icon_info = MyGetIconInfo(new_icon);
 
                             if (new_icon == NULL)
                             {

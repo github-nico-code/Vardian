@@ -2201,7 +2201,7 @@ class LogBuilder : base::NoCopy {
     ELPP_INTERNAL_INFO(3, "Destroying log builder...")
   }
   virtual base::type::string_t build(const LogMessage* logMessage, bool appendNewLine) const = 0;
-  void convertToColoredOutput(base::type::string_t* logLine, Level level);
+  void convertToColoredOutput(base::type::string_t* logLine, Level level) const;
  private:
   bool m_termSupportsColor;
   friend class el::base::DefaultLogDispatchCallback;
@@ -2558,15 +2558,15 @@ class Storage : base::NoCopy, public base::threading::ThreadSafe {
 
   virtual ~Storage(void);
 
-  inline bool validateEveryNCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t occasion) {
+  inline bool validateEveryNCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t occasion) const {
     return hitCounters()->validateEveryN(filename, lineNumber, occasion);
   }
 
-  inline bool validateAfterNCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t n) {
+  inline bool validateAfterNCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t n) const {
     return hitCounters()->validateAfterN(filename, lineNumber, n);
   }
 
-  inline bool validateNTimesCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t n) {
+  inline bool validateNTimesCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t n) const {
     return hitCounters()->validateNTimes(filename, lineNumber, n);
   }
 

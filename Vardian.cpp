@@ -16,6 +16,8 @@
 #include "Rokid.h"
 #include <regex>
 #include "easylogging++.h"
+#include <vector>
+#include <valarray>
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -233,6 +235,126 @@ BOOL DeInitInstance()
     return TRUE;
 }
 
+/// <summary>
+   /// Get Intersection point
+   /// </summary>
+   /// <param name="a1">a1 is line1 start</param>
+   /// <param name="a2">a2 is line1 end</param>
+   /// <param name="b1">b1 is line2 start</param>
+   /// <param name="b2">b2 is line2 end</param>
+   /// <returns></returns>
+bool Intersects(const POINT& p0, const POINT& p1, const POINT& p2, const POINT& p3, POINT& i)
+{
+        double denom, s_numer, t_numer, t;
+
+        LONG s10_x, s10_y, s32_x, s32_y, s02_x, s02_y;
+        s10_x = p1.x - p0.x;
+        s10_y = p1.y - p0.y;
+        s32_x = p3.x - p2.x;
+        s32_y = p3.y - p2.y;
+
+        denom = s10_x * s32_y - s32_x * s10_y;
+        if (denom == 0)
+            return false; // Collinear
+        bool denomPositive = denom > 0;
+
+        s02_x = p0.x - p2.x;
+        s02_y = p0.y - p2.y;
+        s_numer = s10_x * s02_y - s10_y * s02_x;
+        if ((s_numer < 0) == denomPositive)
+            return false; // No collision
+
+        t_numer = s32_x * s02_y - s32_y * s02_x;
+        if ((t_numer < 0) == denomPositive)
+            return false; // No collision
+
+        if (((s_numer > denom) == denomPositive) || ((t_numer > denom) == denomPositive))
+            return false; // No collision
+        // Collision detected
+        t = t_numer / denom;
+        i.x = p0.x + (t * s10_x);
+        i.y = p0.y + (t * s10_y);
+
+        return true;
+}
+
+bool Intersects_Once(const POINT& a1, const POINT& a2, const RECT& rect, POINT& result, RECT& intersectionResult) {
+    POINT left_top = { rect.left, rect.top };
+    POINT left_bottom = { rect.left, rect.bottom };
+    POINT right_top = { rect.right, rect.top };
+    POINT right_bottom = { rect.right, rect.bottom };
+
+
+    // test all four edges of the rectangle
+    intersectionResult.left = Intersects(a1, a2, left_top, left_bottom, result);
+    intersectionResult.bottom = Intersects(a1, a2, left_bottom, right_bottom, result);
+    intersectionResult.right = Intersects(a1, a2, right_bottom, right_top, result);
+    intersectionResult.top = Intersects(a1, a2, right_top, left_top, result);
+    if (intersectionResult.top == true xor intersectionResult.bottom == true xor intersectionResult.left == true xor intersectionResult.right == true ) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+struct MYICON_INFO
+{
+    int     nWidth;
+    int     nHeight;
+    int     nBitsPerPixel;
+};
+
+MYICON_INFO MyGetIconInfo(HICON hIcon);
+
+// =======================================
+
+MYICON_INFO MyGetIconInfo(HICON hIcon)
+{
+    MYICON_INFO myinfo;
+    ZeroMemory(&myinfo, sizeof(myinfo));
+
+    ICONINFO info;
+    ZeroMemory(&info, sizeof(info));
+
+    BOOL bRes = FALSE;
+
+    bRes = GetIconInfo(hIcon, &info);
+    if (!bRes)
+        return myinfo;
+
+    BITMAP bmp;
+    ZeroMemory(&bmp, sizeof(bmp));
+
+    if (info.hbmColor)
+    {
+        const int nWrittenBytes = GetObject(info.hbmColor, sizeof(bmp), &bmp);
+        if (nWrittenBytes > 0)
+        {
+            myinfo.nWidth = bmp.bmWidth;
+            myinfo.nHeight = bmp.bmHeight;
+            myinfo.nBitsPerPixel = bmp.bmBitsPixel;
+        }
+    }
+    else if (info.hbmMask)
+    {
+        // Icon has no color plane, image data stored in mask
+        const int nWrittenBytes = GetObject(info.hbmMask, sizeof(bmp), &bmp);
+        if (nWrittenBytes > 0)
+        {
+            myinfo.nWidth = bmp.bmWidth;
+            myinfo.nHeight = bmp.bmHeight / 2;
+            myinfo.nBitsPerPixel = 1;
+        }
+    }
+
+    if (info.hbmColor)
+        DeleteObject(info.hbmColor);
+    if (info.hbmMask)
+        DeleteObject(info.hbmMask);
+
+    return myinfo;
+}
 
 //
 //  FUNKTION: WndProc(HWND, UINT, WPARAM, LPARAM)
@@ -330,35 +452,102 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
                 CURSORINFO cursor = { sizeof(cursor) };
                 if (GetCursorInfo(&cursor) == NULL) {
-                    LOG(ERROR) << std::format("GetCursorInfo failed with error: %s",
+                    LOG(ERROR) << std::format("GetCursorInfo failed with error: {}",
                         getErrorCodeDescription(GetLastError()));
                 }
                 
                 if (cursor.flags == CURSOR_SHOWING) {
                     ICONINFO info = { sizeof(info) };
                     if (GetIconInfo(cursor.hCursor, &info) == NULL) {
-                        LOG(ERROR) << std::format("GetIconInfo failed with error: %s",
+                        LOG(ERROR) << std::format("GetIconInfo failed with error: {}",
                             getErrorCodeDescription(GetLastError()));
                     }
 
                     const int x = cursor.ptScreenPos.x - sourceRect.left - info.xHotspot;
                     const int y = cursor.ptScreenPos.y - sourceRect.top - info.yHotspot;
-                    BITMAP bmpCursor = { 0 };
 
-                    const int result = GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
-                    if ( result == 0) {
-                        const DWORD last_error = GetLastError();
-                        if (last_error != 0) {
-                            // it seams to be 0 if cursor bitmap was already there - I do not know
-                            LOG(ERROR) << std::format("GetObject for Cursor bitmap failed with error: %s",
+                    // is the cursor inside drawing area
+                    if ((cursor.ptScreenPos.x >= intersectSource.left) and (cursor.ptScreenPos.x <= intersectSource.right) and
+                        (cursor.ptScreenPos.y >= intersectSource.top) and (cursor.ptScreenPos.y <= intersectSource.bottom)) {
+                        // mouse inside drawing area ==> draw cursor bitmap
+                        BITMAP bmpCursor = { 0 };
+
+                        const int result = GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
+                        if (result == 0) {
+                            const DWORD last_error = GetLastError();
+                            if (last_error != 0) {
+                                // it seams to be 0 if cursor bitmap was already there - I do not know
+                                LOG(ERROR) << std::format("GetObject for Cursor bitmap failed with error: {}",
+                                    getErrorCodeDescription(GetLastError()));
+                            }
+                        }
+                        if (DrawIconEx(hdc, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
+                            0, NULL, DI_NORMAL) == 0)
+                        {
+                            LOG(ERROR) << std::format("DrawIconEx failed with error: {}",
                                 getErrorCodeDescription(GetLastError()));
                         }
                     }
-                    if (DrawIconEx(hdc, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
-                        0, NULL, DI_NORMAL) == 0)
-                    {
-                        LOG(ERROR) << std::format("DrawIconEx failed with error: %s",
-                            getErrorCodeDescription(GetLastError()));
+                    else {
+                        // mouse curoor outsite drawing area ==> draw direction mouse cursor dependend on position of mouse outside sourceRect
+                        // https://learn.microsoft.com/en-us/windows/win32/menurc/about-cursors
+                        // calculate middle of sourceRect
+                        POINT middlePoint;
+                        middlePoint.x = intersectSource.left + (intersectSource.right - intersectSource.left) / 2;
+                        middlePoint.y = intersectSource.top + (intersectSource.bottom - intersectSource.top) / 2;
+
+                        POINT mousePoint;
+                        mousePoint.x = cursor.ptScreenPos.x - info.xHotspot;
+                        mousePoint.y = cursor.ptScreenPos.y - info.yHotspot;
+
+                        POINT intersectionPoint;
+                        RECT intersectionResult = { 0,0,0,0 };
+
+                        if (Intersects_Once(middlePoint, mousePoint, intersectSource, intersectionPoint, intersectionResult)) {
+                            LONG imagepos_x = intersectionPoint.x - sourceRect.left;
+                            LONG imagepos_y = intersectionPoint.y - sourceRect.top;
+                            LONG mult_iconsize_x = 0;
+                            LONG mult_iconsize_y = 0;
+
+                            LPWSTR icon_resource_string = NULL;
+
+
+                            // found one intersection point and intersected rectangle side
+                            if (intersectionResult.left == true) {
+                                icon_resource_string = MAKEINTRESOURCE(IDI_ISLEFT);
+                                mult_iconsize_x = 1; // upper left corner from icon is the size of the icon away from left border
+                                mult_iconsize_y = 0;
+                            } else if (intersectionResult.right == true) {
+                                icon_resource_string = MAKEINTRESOURCE(IDI_ISRIGHT);
+                                mult_iconsize_x = -2; // upper left corner from icon is double the size of the icon away from right border
+                                mult_iconsize_y = 0;
+                            } else if (intersectionResult.top == true) {
+                                icon_resource_string = MAKEINTRESOURCE(IDI_ISTOP);
+                                mult_iconsize_x = 0; // upper left corner from icon is double the size of the icon away from right border
+                                mult_iconsize_y = 1;
+                            } else if (intersectionResult.bottom == true) {
+                                icon_resource_string = MAKEINTRESOURCE(IDI_ISBOTTOM);
+                                mult_iconsize_x = 0; // upper left corner from icon is double the size of the icon away from right border
+                                mult_iconsize_y = -2;
+                            }
+
+                            HICON new_icon = LoadIcon(hInst, icon_resource_string);
+                            MYICON_INFO icon_info = MyGetIconInfo(new_icon);
+
+                            if (new_icon == NULL)
+                            {
+                                LOG(ERROR) << std::format("LoadIcon failed with error: {}",
+                                    getErrorCodeDescription(GetLastError()));
+                            }
+
+                            if (DrawIconEx(hdc, imagepos_x + mult_iconsize_x * icon_info.nWidth, imagepos_y + mult_iconsize_y * icon_info.nHeight,
+                                new_icon, 0, 0,
+                                0, NULL, DI_NORMAL) == 0)
+                            {
+                                LOG(ERROR) << std::format("DrawIconEx failed with error: {}",
+                                    getErrorCodeDescription(GetLastError()));
+                            }
+                        }
                     }
                     DeleteObject(info.hbmColor);
                     DeleteObject(info.hbmMask);
@@ -493,8 +682,8 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
                 DISPLAYCONFIG_TARGET_DEVICE_NAME deviceName = {};
                 deviceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
                 deviceName.header.size = sizeof(DISPLAYCONFIG_TARGET_DEVICE_NAME);
-                deviceName.header.adapterId = paths[i].targetInfo.adapterId;
-                deviceName.header.id = paths[i].targetInfo.id;
+                deviceName.header.adapterId = paths.at(i).targetInfo.adapterId;
+                deviceName.header.id = paths.at(i).targetInfo.id;
                 if (DisplayConfigGetDeviceInfo((DISPLAYCONFIG_DEVICE_INFO_HEADER*)&deviceName))
                     continue;
 
@@ -656,7 +845,7 @@ bool InitializeRokidWindow(HWND hWnd) {
         }
 
         if (ReleaseDC(NULL, hdcScreen) != 1) {
-            LOG(ERROR) << std::format("ReleaseDC failed with error: ", getErrorCodeDescription(GetLastError()));
+            LOG(ERROR) << std::format("ReleaseDC failed with error: {}", getErrorCodeDescription(GetLastError()));
         }
 
         hdcScreen = NULL;
@@ -729,13 +918,13 @@ bool InitializeRokidWindow(HWND hWnd) {
         monitor_struct.DevMode.dmPelsHeight,
         SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOACTIVATE) == 0)
     {
-        LOG(ERROR) << std::format("Could not SetWindowPos to pos (%i,%i) with size (%i, %i).",
+        LOG(ERROR) << std::format("Could not SetWindowPos to pos ({},{}) with size ({}, {}).",
             monitor_struct.DevMode.dmPosition.x, monitor_struct.DevMode.dmPosition.y,
             monitor_struct.DevMode.dmPelsWidth, monitor_struct.DevMode.dmPelsHeight);
         return false;
     }
 
-    LOG(INFO) << std::format("SetWindowPos to pos (%i,%i) with size (%i, %i).",
+    LOG(INFO) << std::format("SetWindowPos to pos ({},{}) with size ({}, {}).",
         monitor_struct.DevMode.dmPosition.x, monitor_struct.DevMode.dmPosition.y,
         monitor_struct.DevMode.dmPelsWidth, monitor_struct.DevMode.dmPelsHeight);
 
@@ -744,7 +933,7 @@ bool InitializeRokidWindow(HWND hWnd) {
 
     if (timerId == NULL) {
         // timer creation failed
-        LOG(ERROR) << std::format("Timer creation failed with Erro: %s", getErrorCodeDescription(GetLastError()));
+        LOG(ERROR) << std::format("Timer creation failed with Erro: {}", getErrorCodeDescription(GetLastError()));
         return false;
     }
 

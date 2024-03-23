@@ -13,6 +13,11 @@
 #define IDC_VARDIAN                     109
 #define IDT_TIMER_COPY                  110
 #define IDR_MAINFRAME                   128
+#define IDI_ISLEFT                      135
+#define IDI_ISBOTTOM                    136
+#define IDI_ISTOP                       137
+#define IDI_ICON1                       138
+#define IDI_ISRIGHT                     138
 #define IDC_MFCLINK1                    1000
 #define IDHOMEPAGE                      1000
 #define IDC_BUTTON1                     1002
@@ -24,7 +29,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        135
+#define _APS_NEXT_RESOURCE_VALUE        139
 #define _APS_NEXT_COMMAND_VALUE         32772
 #define _APS_NEXT_CONTROL_VALUE         1007
 #define _APS_NEXT_SYMED_VALUE           111

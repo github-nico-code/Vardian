@@ -55,6 +55,18 @@
     <Image Include="Vardian.ico">
       <Filter>Ressourcendateien</Filter>
     </Image>
+    <Image Include="icon1.ico">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
+    <Image Include="ico00001.ico">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
+    <Image Include="icon2.ico">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
+    <Image Include="ico00002.ico">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />

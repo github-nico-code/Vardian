@@ -43,9 +43,9 @@ std::string getErrorCodeDescription(long errorCode)
 		0);
 
     if (!messageReceived)
-        ReturnMessage = std::string("Error code: ") + std::to_string(errorCode);
+        ReturnMessage = std::string("Error code: ") + std::format("{:x}", errorCode);
 	else
-        ReturnMessage = std::string("Error code: '") + std::to_string(errorCode) +
+        ReturnMessage = std::string("Error code: '") + std::format("{:x}", errorCode) +
             std::to_string(errorCode) + "' with message: " + MessageFromSystem.data();
 
 	return ReturnMessage;

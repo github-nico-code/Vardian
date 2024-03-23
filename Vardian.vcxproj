@@ -211,6 +211,10 @@
     <ResourceCompile Include="Vardian.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="ico00001.ico" />
+    <Image Include="ico00002.ico" />
+    <Image Include="icon1.ico" />
+    <Image Include="icon2.ico" />
     <Image Include="small.ico" />
     <Image Include="Vardian.ico" />
   </ItemGroup>

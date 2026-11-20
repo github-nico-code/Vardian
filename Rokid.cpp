@@ -1,6 +1,8 @@
 #include "Rokid.h"
 #include <SetupAPI.h>
+extern "C" {
 #include <hidsdi.h>
+}
 #include "helpers.h"
 #include <future>
 #include "easylogging++.h"
@@ -14,18 +16,10 @@ Rokid::Rokid() noexcept:
 	cummulated_gyro_x(0), 
 	cummulated_gyro_y(0), 
 	cummulated_gyro_z(0),
+	_last_sensor_timestamp(0),
 	_stop(false),
-	_stopped(true),
-	_sensibility(10)
+	_stopped(true)
 {
-}
-
-void Rokid::set_sensibility(const float& sensibility) noexcept {
-	_sensibility = sensibility;
-}
-
-float Rokid::get_sensibility() const noexcept {
-	return _sensibility;
 }
 
 Rokid::~Rokid() {
@@ -119,19 +113,20 @@ Rokid::rokid_fusion_parse_usb_packet(const std::vector<char>& usb_buffer) noexce
 	}
 
 	if (received) {
-		static uint64_t last_time = 0;
-
-		if (last_time == 0) {
-			// initialize last_time variable
-			last_time = timestamp;
+		if (_last_sensor_timestamp == 0 || timestamp <= _last_sensor_timestamp) {
+			// Initialize after startup/reconnect, and safely recover if the
+			// device timestamp restarts instead of producing a huge delta.
+			_last_sensor_timestamp = timestamp;
 		}
 		else {
-			const uint64_t time_diff = timestamp - last_time;
-			last_time = timestamp;
+			const uint64_t time_diff = timestamp - _last_sensor_timestamp;
+			_last_sensor_timestamp = timestamp;
 
-			const float actual_x = (trunc(gyro_vect.x * _sensibility) / _sensibility) *time_diff;
-			const float actual_y = (trunc(gyro_vect.y * _sensibility) / _sensibility) *time_diff;
-			const float actual_z = (trunc(gyro_vect.z * _sensibility) / _sensibility) *time_diff;
+			// Preserve the sensor's full floating-point precision. Noise is handled
+			// later by the configurable dead zone and low-pass filter.
+			const double actual_x = static_cast<double>(gyro_vect.x) * static_cast<double>(time_diff);
+			const double actual_y = static_cast<double>(gyro_vect.y) * static_cast<double>(time_diff);
+			const double actual_z = static_cast<double>(gyro_vect.z) * static_cast<double>(time_diff);
 
 			//LOG_IT(LOG_INFO, "type: {}, x: {}, y {}, z {}", usb_buffer[0], actual_x, actual_y, actual_z);
 
@@ -358,6 +353,13 @@ bool Rokid::start() {
 
 	if(_stopped)
 	{
+		{
+			std::lock_guard<std::mutex> lock(_mutex);
+			cummulated_gyro_x = 0.0;
+			cummulated_gyro_y = 0.0;
+			cummulated_gyro_z = 0.0;
+			_last_sensor_timestamp = 0;
+		}
 		_stop = false;
 		_usb_thread = std::thread(&Rokid::rokid_usb_thread, this, std::ref(_stop), std::ref(_stopped)); //Create the thread and store its reference
 	}
@@ -387,6 +389,7 @@ bool Rokid::is_running() noexcept {
 }
 
 void Rokid::get_gyro_angles_since_last_call(double& x, double& y, double& z) noexcept {
+	std::lock_guard<std::mutex> lock(_mutex);
 	x = cummulated_gyro_x;
 	y = cummulated_gyro_y;
 	z = cummulated_gyro_z;

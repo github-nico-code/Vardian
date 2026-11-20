@@ -14,6 +14,13 @@
 #include <shellapi.h>
 #include "helpers.h"
 #include "Rokid.h"
+#include "ViewportTracking.h"
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cwchar>
+#include <cwctype>
+#include <iterator>
 #include <regex>
 #include "easylogging++.h"
 #include <vector>
@@ -25,6 +32,22 @@ INITIALIZE_EASYLOGGINGPP
 
 #define WM_MYMESSAGE (WM_USER + 100)
 
+constexpr UINT ID_TRAY_EXIT = 1;
+constexpr UINT ID_TRAY_ABOUT = 2;
+constexpr UINT ID_TRAY_SETTINGS = 3;
+constexpr UINT ID_TRAY_RECENTER = 4;
+constexpr int ID_HOTKEY_RECENTER = 1;
+
+constexpr int IDC_HORIZONTAL_SENSITIVITY = 2001;
+constexpr int IDC_VERTICAL_SENSITIVITY = 2002;
+constexpr int IDC_SMOOTHING = 2003;
+constexpr int IDC_DEAD_ZONE = 2004;
+constexpr int IDC_LOCK_VERTICAL = 2005;
+constexpr int IDC_APPLY_TRACKING = 2006;
+constexpr int IDC_RECENTER_TRACKING = 2007;
+
+constexpr wchar_t TRACKING_SETTINGS_WINDOW_CLASS[] = L"VardianTrackingSettings";
+
 //! Helper define to make code more readable.
 #define U_1_000_000_000 (1000 * 1000 * 1000)
 
@@ -34,15 +57,16 @@ get_ns(void) noexcept
     LARGE_INTEGER qpc;
     QueryPerformanceCounter(&qpc);
 
-    static int64_t ns_per_qpc_tick = 0;
-    if (ns_per_qpc_tick == 0) {
-        // Fixed at startup, so we can cache this.
+    static int64_t qpc_frequency = 0;
+    if (qpc_frequency == 0) {
         LARGE_INTEGER freq;
         QueryPerformanceFrequency(&freq);
-        ns_per_qpc_tick = U_1_000_000_000 / freq.QuadPart;
+        qpc_frequency = freq.QuadPart;
     }
 
-    return qpc.QuadPart * ns_per_qpc_tick;
+    return static_cast<uint64_t>(
+        (static_cast<long double>(qpc.QuadPart) * U_1_000_000_000) /
+        static_cast<long double>(qpc_frequency));
 }
 
 
@@ -52,13 +76,18 @@ HINSTANCE hInst;                                // Aktuelle Instanz
 WCHAR szTitle[MAX_LOADSTRING];                  // Titelleistentext
 WCHAR szWindowClass[MAX_LOADSTRING];            // Der Klassenname des Hauptfensters.
 Rokid rokid_device;  // Pointer to Rokid Max
-UINT_PTR timerId = NULL;                        // timer to copy part of screen to Rokid Max
+UINT_PTR timerId = 0;                           // timer to copy part of screen to Rokid Max
+uint64_t lastViewportUpdateTimestamp = 0;
 constexpr UINT timerInterval = 16;                  // close to the refresh rate @60hz
 RECT virtualScreenRectWithoutRokidMax;          // values of the virtual screen without the X axis from Rokid Max
 //HWND hWnd = NULL;                               // main window
 bool running = false;
 RECT sourceRect = { 500, 500, 2420, 1580 };
 HDC hdcScreen = NULL;
+HWND mainWindow = NULL;
+ViewportTrackingState viewportTracking;
+std::wstring trackingIniPath;
+HWND trackingSettingsWindow = NULL;
 
 // Declare global variables
 NOTIFYICONDATA nid;
@@ -69,9 +98,28 @@ BOOL                InitInstance(HINSTANCE, int, HWND& hWnd);
 BOOL                DeInitInstance();
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM) noexcept;
+LRESULT CALLBACK    TrackingSettingsWndProc(HWND, UINT, WPARAM, LPARAM);
 bool                InitializeRokidWindow(HWND hWnd);
 void                AddTaskbarIcon(HWND hWnd) noexcept;
 void                RemoveTaskbarIcon() noexcept;
+void                ShowTrackingSettingsWindow(HWND owner);
+void                RecenterViewport() noexcept;
+
+std::wstring GetTrackingIniPath()
+{
+    wchar_t module_path[MAX_PATH]{};
+    const DWORD length = GetModuleFileNameW(NULL, module_path, MAX_PATH);
+    std::wstring path(module_path, length);
+    const size_t separator = path.find_last_of(L"\\/");
+    if (separator != std::wstring::npos) {
+        path.resize(separator + 1);
+    }
+    else {
+        path.clear();
+    }
+    path += L"vardian.ini";
+    return path;
+}
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -104,6 +152,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // TODO: Hier Code einfügen.
     LOG(INFO) << "Start Vardian";
 
+    trackingIniPath = GetTrackingIniPath();
+    viewportTracking.set_settings(load_viewport_tracking_settings(trackingIniPath));
+
     // Globale Zeichenfolgen initialisieren
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_VARDIAN, szWindowClass, MAX_LOADSTRING);
@@ -115,6 +166,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     if (!InitInstance (hInstance, nCmdShow, hWnd))
     {
         return FALSE;
+    }
+
+    if (!RegisterHotKey(hWnd, ID_HOTKEY_RECENTER,
+        MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, L'R')) {
+        LOG(WARNING) << "Could not register Ctrl+Alt+R recenter hotkey: "
+            << getErrorCodeDescription(GetLastError());
     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_VARDIAN));
@@ -208,6 +265,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow, HWND& hWnd)
        return FALSE;
    }
 
+   mainWindow = hWnd;
+
    // Make the window opaque.
    SetLayeredWindowAttributes(hWnd, 0, 255, LWA_ALPHA);
 
@@ -229,7 +288,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow, HWND& hWnd)
 //
 BOOL DeInitInstance()
 {
-    KillTimer(NULL, timerId);
+    if (mainWindow != NULL && timerId != 0) {
+        KillTimer(mainWindow, timerId);
+        timerId = 0;
+    }
     rokid_device.stop();
 
     return TRUE;
@@ -376,12 +438,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // Menüauswahl analysieren:
             switch (wmId)
             {
-            case 1:
+            case ID_TRAY_EXIT:
                 // Exit the program
                 DestroyWindow(hWnd);
                 break;
-            case 2:
+            case ID_TRAY_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+                break;
+            case ID_TRAY_SETTINGS:
+                ShowTrackingSettingsWindow(hWnd);
+                break;
+            case ID_TRAY_RECENTER:
+                RecenterViewport();
                 break;
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
@@ -451,14 +519,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                 SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
                 CURSORINFO cursor = { sizeof(cursor) };
-                if (GetCursorInfo(&cursor) == NULL) {
+                if (GetCursorInfo(&cursor) == FALSE) {
                     LOG(ERROR) << std::format("GetCursorInfo failed with error: {}",
                         getErrorCodeDescription(GetLastError()));
                 }
                 
                 if (cursor.flags == CURSOR_SHOWING) {
                     ICONINFO info = { sizeof(info) };
-                    if (GetIconInfo(cursor.hCursor, &info) == NULL) {
+                    if (GetIconInfo(cursor.hCursor, &info) == FALSE) {
                         LOG(ERROR) << std::format("GetIconInfo failed with error: {}",
                             getErrorCodeDescription(GetLastError()));
                     }
@@ -559,7 +627,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 EndPaint(hWnd, &ps);
         }
         break;
+    case WM_HOTKEY:
+        if (wParam == ID_HOTKEY_RECENTER) {
+            RecenterViewport();
+        }
+        break;
     case WM_DESTROY:
+        UnregisterHotKey(hWnd, ID_HOTKEY_RECENTER);
+        if (trackingSettingsWindow != NULL) {
+            DestroyWindow(trackingSettingsWindow);
+        }
         PostQuitMessage(0);
         break;
     case WM_DISPLAYCHANGE:
@@ -590,8 +667,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             // Show a simple menu on right click
             HMENU hMenu = CreatePopupMenu();
-            AppendMenu(hMenu, MF_STRING, 2, L"About");
-            AppendMenu(hMenu, MF_STRING, 1, L"Exit");
+            AppendMenu(hMenu, MF_STRING, ID_TRAY_SETTINGS, L"Tracking settings...");
+            AppendMenu(hMenu, MF_STRING, ID_TRAY_RECENTER, L"Recenter\tCtrl+Alt+R");
+            AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
+            AppendMenu(hMenu, MF_STRING, ID_TRAY_ABOUT, L"About");
+            AppendMenu(hMenu, MF_STRING, ID_TRAY_EXIT, L"Exit");
             POINT pt;
             GetCursorPos(&pt);
             SetForegroundWindow(hWnd);
@@ -633,6 +713,221 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) no
     default: {} // nothing
     }
     return (INT_PTR)FALSE;
+}
+
+namespace
+{
+void set_default_control_font(HWND control) noexcept
+{
+    SendMessageW(control, WM_SETFONT,
+        reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+}
+
+HWND create_settings_control(HWND parent, const wchar_t* class_name,
+    const wchar_t* text, DWORD style, int x, int y, int width, int height, int id)
+{
+    HWND control = CreateWindowExW(
+        wcscmp(class_name, L"EDIT") == 0 ? WS_EX_CLIENTEDGE : 0,
+        class_name, text, WS_CHILD | WS_VISIBLE | style,
+        x, y, width, height, parent, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
+        hInst, nullptr);
+    if (control != NULL) {
+        set_default_control_font(control);
+    }
+    return control;
+}
+
+void set_double_control(HWND window, int control_id, double value) noexcept
+{
+    wchar_t text[64]{};
+    swprintf_s(text, L"%.6g", value);
+    SetDlgItemTextW(window, control_id, text);
+}
+
+bool read_double_control(HWND window, int control_id, const wchar_t* display_name,
+    double minimum, double maximum, double& value) noexcept
+{
+    wchar_t text[128]{};
+    GetDlgItemTextW(window, control_id, text, static_cast<int>(std::size(text)));
+
+    wchar_t* end = nullptr;
+    const double parsed = std::wcstod(text, &end);
+    while (end != nullptr && std::iswspace(*end)) {
+        ++end;
+    }
+
+    if (end == text || (end != nullptr && *end != L'\0') || !std::isfinite(parsed) ||
+        parsed < minimum || parsed > maximum) {
+        const std::wstring message = std::wstring(display_name) + L" must be between " +
+            std::to_wstring(minimum) + L" and " + std::to_wstring(maximum) + L".";
+        MessageBoxW(window, message.c_str(), L"Invalid tracking setting", MB_OK | MB_ICONWARNING);
+        SetFocus(GetDlgItem(window, control_id));
+        return false;
+    }
+
+    value = parsed;
+    return true;
+}
+
+void populate_tracking_settings(HWND window) noexcept
+{
+    const auto& settings = viewportTracking.settings();
+    set_double_control(window, IDC_HORIZONTAL_SENSITIVITY, settings.horizontal_sensitivity);
+    set_double_control(window, IDC_VERTICAL_SENSITIVITY, settings.vertical_sensitivity);
+    set_double_control(window, IDC_SMOOTHING, settings.smoothing);
+    set_double_control(window, IDC_DEAD_ZONE, settings.dead_zone);
+    CheckDlgButton(window, IDC_LOCK_VERTICAL,
+        settings.lock_vertical ? BST_CHECKED : BST_UNCHECKED);
+}
+
+bool apply_tracking_settings(HWND window) noexcept
+{
+    ViewportTrackingSettings settings = viewportTracking.settings();
+    if (!read_double_control(window, IDC_HORIZONTAL_SENSITIVITY,
+            L"Horizontal sensitivity", 0.0, 10.0, settings.horizontal_sensitivity) ||
+        !read_double_control(window, IDC_VERTICAL_SENSITIVITY,
+            L"Vertical sensitivity", 0.0, 10.0, settings.vertical_sensitivity) ||
+        !read_double_control(window, IDC_SMOOTHING,
+            L"Smoothing", 0.01, 1.0, settings.smoothing) ||
+        !read_double_control(window, IDC_DEAD_ZONE,
+            L"Dead zone", 0.0, 10000.0, settings.dead_zone)) {
+        return false;
+    }
+
+    settings.lock_vertical = IsDlgButtonChecked(window, IDC_LOCK_VERTICAL) == BST_CHECKED;
+    viewportTracking.set_settings(settings);
+
+    if (!save_viewport_tracking_settings(trackingIniPath, settings)) {
+        LOG(WARNING) << "Could not save tracking settings to " << ws2s(trackingIniPath);
+        MessageBoxW(window,
+            L"The settings are active, but vardian.ini could not be saved.",
+            L"Vardian", MB_OK | MB_ICONWARNING);
+    }
+    return true;
+}
+}
+
+LRESULT CALLBACK TrackingSettingsWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+    case WM_CREATE:
+    {
+        create_settings_control(hWnd, L"STATIC", L"Horizontal sensitivity (0 - 10):",
+            SS_LEFT, 16, 18, 220, 20, 0);
+        create_settings_control(hWnd, L"EDIT", L"", ES_AUTOHSCROLL,
+            250, 15, 120, 24, IDC_HORIZONTAL_SENSITIVITY);
+
+        create_settings_control(hWnd, L"STATIC", L"Vertical sensitivity (0 - 10):",
+            SS_LEFT, 16, 52, 220, 20, 0);
+        create_settings_control(hWnd, L"EDIT", L"", ES_AUTOHSCROLL,
+            250, 49, 120, 24, IDC_VERTICAL_SENSITIVITY);
+
+        create_settings_control(hWnd, L"STATIC", L"Smoothing (0.01 - 1.0):",
+            SS_LEFT, 16, 86, 220, 20, 0);
+        create_settings_control(hWnd, L"EDIT", L"", ES_AUTOHSCROLL,
+            250, 83, 120, 24, IDC_SMOOTHING);
+
+        create_settings_control(hWnd, L"STATIC", L"Dead zone (pixels/second):",
+            SS_LEFT, 16, 120, 220, 20, 0);
+        create_settings_control(hWnd, L"EDIT", L"", ES_AUTOHSCROLL,
+            250, 117, 120, 24, IDC_DEAD_ZONE);
+
+        create_settings_control(hWnd, L"BUTTON", L"Lock vertical movement",
+            BS_AUTOCHECKBOX | WS_TABSTOP, 16, 155, 240, 24, IDC_LOCK_VERTICAL);
+
+        create_settings_control(hWnd, L"BUTTON", L"Apply",
+            BS_DEFPUSHBUTTON | WS_TABSTOP, 16, 205, 100, 28, IDC_APPLY_TRACKING);
+        create_settings_control(hWnd, L"BUTTON", L"Recenter",
+            BS_PUSHBUTTON | WS_TABSTOP, 126, 205, 100, 28, IDC_RECENTER_TRACKING);
+        create_settings_control(hWnd, L"BUTTON", L"Close",
+            BS_PUSHBUTTON | WS_TABSTOP, 270, 205, 100, 28, IDCANCEL);
+
+        populate_tracking_settings(hWnd);
+        return 0;
+    }
+    case WM_COMMAND:
+        switch (LOWORD(wParam))
+        {
+        case IDC_APPLY_TRACKING:
+            apply_tracking_settings(hWnd);
+            return 0;
+        case IDC_RECENTER_TRACKING:
+            RecenterViewport();
+            return 0;
+        case IDCANCEL:
+            DestroyWindow(hWnd);
+            return 0;
+        default:
+            break;
+        }
+        break;
+    case WM_CLOSE:
+        DestroyWindow(hWnd);
+        return 0;
+    case WM_DESTROY:
+        trackingSettingsWindow = NULL;
+        return 0;
+    default:
+        break;
+    }
+    return DefWindowProcW(hWnd, message, wParam, lParam);
+}
+
+void ShowTrackingSettingsWindow(HWND owner)
+{
+    if (trackingSettingsWindow != NULL) {
+        ShowWindow(trackingSettingsWindow, SW_SHOWNORMAL);
+        SetForegroundWindow(trackingSettingsWindow);
+        return;
+    }
+
+    static bool class_registered = false;
+    if (!class_registered) {
+        WNDCLASSEXW window_class{};
+        window_class.cbSize = sizeof(window_class);
+        window_class.lpfnWndProc = TrackingSettingsWndProc;
+        window_class.hInstance = hInst;
+        window_class.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_VARDIAN));
+        window_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        window_class.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BTNFACE + 1);
+        window_class.lpszClassName = TRACKING_SETTINGS_WINDOW_CLASS;
+        class_registered = RegisterClassExW(&window_class) != 0;
+        if (!class_registered && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
+            LOG(ERROR) << "Could not register tracking settings window: "
+                << getErrorCodeDescription(GetLastError());
+            return;
+        }
+        class_registered = true;
+    }
+
+    trackingSettingsWindow = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
+        TRACKING_SETTINGS_WINDOW_CLASS, L"Vardian tracking settings",
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+        CW_USEDEFAULT, CW_USEDEFAULT, 405, 285,
+        owner, nullptr, hInst, nullptr);
+
+    if (trackingSettingsWindow == NULL) {
+        LOG(ERROR) << "Could not create tracking settings window: "
+            << getErrorCodeDescription(GetLastError());
+        return;
+    }
+
+    ShowWindow(trackingSettingsWindow, SW_SHOWNORMAL);
+    SetForegroundWindow(trackingSettingsWindow);
+}
+
+void RecenterViewport() noexcept
+{
+    if (rokid_device.is_running()) {
+        double discarded_x = 0.0;
+        double discarded_y = 0.0;
+        double discarded_z = 0.0;
+        rokid_device.get_gyro_angles_since_last_call(discarded_x, discarded_y, discarded_z);
+    }
+
+    viewportTracking.recenter();
+    LOG(INFO) << "Viewport tracking recentered.";
 }
 
 struct monitor_struct_typ {
@@ -753,78 +1048,39 @@ static bool get_rokid_monitor_handle(struct monitor_struct_typ& monitor_struct) 
 //
 void CALLBACK UpdateRokidWindow(HWND hWnd, UINT /*uMsg*/, UINT_PTR /*idEvent*/, DWORD /*dwTime*/) noexcept
 {
-    // output dimensions at rokid max display
-    static uint64_t last_timestamp = get_ns();
-
-    std::wstring the_out;
-
     // Get the position of the Rokid Max
     if (rokid_device.is_running()) {
-        static long collect_x_movement = 0;
-        static long collect_y_movement = 0;
-        double gyro_x;
-        double gyro_y;
-        double gyro_z;
+        double gyro_x = 0.0;
+        double gyro_y = 0.0;
+        double gyro_z = 0.0;
 
         rokid_device.get_gyro_angles_since_last_call(gyro_x, gyro_y, gyro_z);
 
-        // LOG_IT(LOG_INFO, "x: %f, y %f, z %f", gyro_x, gyro_y, gyro_z);
-
-        constexpr LONG diff = 100000;
-        constexpr LONG y_threshold = 100;
-        constexpr LONG x_threshold = 50;
-
-        collect_y_movement += static_cast<long>(gyro_y / diff);
-        collect_x_movement += static_cast<long>(gyro_x / diff);
-
-        // if a specific amount of time is over and threshold not reached then delete collectors
-        // This is done becase 3DOF tracking of Rokid Max also moves if glasses are not moved
-        const uint64_t time_diff = get_ns() - last_timestamp;
-        if (time_diff > 1000000000 &&
-            collect_y_movement <= y_threshold &&
-            collect_x_movement <= x_threshold) {
-            // reset timestamp
-            last_timestamp = get_ns();
-            collect_x_movement = 0;
-            collect_y_movement = 0;
+        const uint64_t timestamp = get_ns();
+        double dt_seconds = 1.0 / 60.0;
+        if (lastViewportUpdateTimestamp != 0) {
+            dt_seconds = static_cast<double>(timestamp - lastViewportUpdateTimestamp) /
+                static_cast<double>(U_1_000_000_000);
         }
+        lastViewportUpdateTimestamp = timestamp;
 
-        const long x_size = sourceRect.right - sourceRect.left;
-        const long y_size = sourceRect.bottom - sourceRect.top;
+        sourceRect = viewportTracking.update(gyro_x, gyro_y, dt_seconds,
+            sourceRect, virtualScreenRectWithoutRokidMax);
 
-        // only move in 50 pixel steps
-        if (abs(collect_y_movement) > y_threshold) {
-            sourceRect.left -= collect_y_movement;
-            collect_y_movement = 0;
-
-            // Don't scroll outside whole virtual desktop area.
-            if (sourceRect.left < virtualScreenRectWithoutRokidMax.left - x_size / 3)
-            {
-                sourceRect.left = virtualScreenRectWithoutRokidMax.left - x_size / 3;
-            }
-            // do not move in Rokid Max Screen with copy area
-            else if (sourceRect.left > virtualScreenRectWithoutRokidMax.right - x_size + x_size / 3)
-            {
-                sourceRect.left = virtualScreenRectWithoutRokidMax.right - x_size + x_size / 3;
-            }
-
-            sourceRect.right = sourceRect.left + x_size;
+#if defined(_DEBUG)
+        static uint64_t last_debug_timestamp = 0;
+        if (timestamp - last_debug_timestamp >= 500000000) {
+            const auto& debug = viewportTracking.debug_snapshot();
+            LOG(DEBUG) << std::format(
+                "Tracking raw yaw/pitch: {:.3f}/{:.3f} px/s, filtered: {:.3f}/{:.3f} px/s, "
+                "target: {:.2f}/{:.2f}, current: {:.2f}/{:.2f}",
+                debug.raw_yaw, debug.raw_pitch,
+                debug.filtered_yaw, debug.filtered_pitch,
+                debug.target_x, debug.target_y,
+                debug.current_x, debug.current_y);
+            last_debug_timestamp = timestamp;
         }
-
-        if (abs(collect_x_movement) > x_threshold) {
-            sourceRect.top -= collect_x_movement;
-            collect_x_movement = 0;
-
-            if (sourceRect.top < virtualScreenRectWithoutRokidMax.top - y_size / 3)
-            {
-                sourceRect.top = virtualScreenRectWithoutRokidMax.top - y_size / 3;
-            }
-            else if (sourceRect.top > virtualScreenRectWithoutRokidMax.bottom - y_size + y_size / 3)
-            {
-                sourceRect.top = virtualScreenRectWithoutRokidMax.bottom - y_size + y_size / 3;
-            }
-            sourceRect.bottom = sourceRect.top + y_size;
-        }
+#endif
 
         // Force redraw.
         InvalidateRect(hWnd, NULL, FALSE);
@@ -840,8 +1096,8 @@ bool InitializeRokidWindow(HWND hWnd) {
     std::string the_out;
 
     if (running) {
-        KillTimer(NULL, timerId);
-        timerId = NULL;
+        KillTimer(hWnd, timerId);
+        timerId = 0;
 
         if (rokid_device.is_running()) {
             rokid_device.stop();
@@ -897,13 +1153,14 @@ bool InitializeRokidWindow(HWND hWnd) {
 
     // reset values for virtual screen
     SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-    const unsigned int vScreenWidth = GetSystemMetricsForDpi(SM_CXVIRTUALSCREEN, 96 /* 100% scaling*/);
-    const unsigned int vScreenHeight = GetSystemMetricsForDpi(SM_CYVIRTUALSCREEN, 96 /* 100% scaling*/);
+    const LONG vScreenWidth = GetSystemMetricsForDpi(SM_CXVIRTUALSCREEN, 96 /* 100% scaling*/);
+    const LONG vScreenHeight = GetSystemMetricsForDpi(SM_CYVIRTUALSCREEN, 96 /* 100% scaling*/);
 
     virtualScreenRectWithoutRokidMax.left = GetSystemMetricsForDpi(SM_XVIRTUALSCREEN, 96);
     virtualScreenRectWithoutRokidMax.top = GetSystemMetricsForDpi(SM_YVIRTUALSCREEN, 96);
-    virtualScreenRectWithoutRokidMax.right = GetSystemMetrics(SM_XVIRTUALSCREEN) + vScreenWidth - monitor_struct.DevMode.dmPelsWidth;
-    virtualScreenRectWithoutRokidMax.bottom = GetSystemMetrics(SM_YVIRTUALSCREEN) + vScreenHeight;
+    virtualScreenRectWithoutRokidMax.right = virtualScreenRectWithoutRokidMax.left +
+        vScreenWidth - static_cast<LONG>(monitor_struct.DevMode.dmPelsWidth);
+    virtualScreenRectWithoutRokidMax.bottom = virtualScreenRectWithoutRokidMax.top + vScreenHeight;
 
     the_out = std::string("Main Window Rectangle: ") +
         " virtualScreenRectWithoutRokidMax left, top, width x heigth:  " + std::to_string(virtualScreenRectWithoutRokidMax.left) +
@@ -931,10 +1188,15 @@ bool InitializeRokidWindow(HWND hWnd) {
         monitor_struct.DevMode.dmPosition.x, monitor_struct.DevMode.dmPosition.y,
         monitor_struct.DevMode.dmPelsWidth, monitor_struct.DevMode.dmPelsHeight);
 
+    viewportTracking.reset(sourceRect, virtualScreenRectWithoutRokidMax);
+    sourceRect = viewportTracking.update(0.0, 0.0, 1.0 / 60.0,
+        sourceRect, virtualScreenRectWithoutRokidMax);
+    lastViewportUpdateTimestamp = 0;
+
     // Create a timer to update the control. But only if Rokid Max is connected
     timerId = SetTimer(hWnd, 0, timerInterval, UpdateRokidWindow);
 
-    if (timerId == NULL) {
+    if (timerId == 0) {
         // timer creation failed
         LOG(ERROR) << std::format("Timer creation failed with Erro: {}", getErrorCodeDescription(GetLastError()));
         return false;
